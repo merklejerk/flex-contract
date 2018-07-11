@@ -23,6 +23,20 @@ contract TestContract {
 		return a;
 	}
 
+	function echoArray(bytes32[] a) public view returns (bytes32[]) {
+		return a;
+	}
+
+	function returnMultiple(address a, uint256 b, bytes32 c)
+			public view returns (address, uint256, bytes32) {
+		return (a, b, c);
+	}
+
+	function returnMultipleNamed(address a, uint256 b, bytes32 c)
+			public view returns (address r0, uint256 r1, bytes32 r2) {
+		return (a, b, c);
+	}
+
 	function transact() public payable returns (bool) {
 		return true;
 	}
@@ -30,7 +44,7 @@ contract TestContract {
 	function raiseEvent(address a, uint256 b, bytes32 c)
 			public payable returns (bool) {
 
-		SingleEvent(a, b, c);
+		emit SingleEvent(a, b, c);
 		return true;
 	}
 
@@ -38,7 +52,7 @@ contract TestContract {
 			public payable returns (bool) {
 
 		for (uint256 i = 0; i < count; i++)
-			RepeatedEvent(i, a, b, c);
+			emit RepeatedEvent(i, a, b, c);
 		return true;
 	}
 

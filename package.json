@@ -1,7 +1,7 @@
 {
 	"name": "flex-contract",
 	"version": "1.0.0",
-	"description": "A flexible Ethereum contract wrapper capable of sending transactions from any address.",
+	"description": "An Ethereum smart contract abstraction for power users.",
 	"main": "src/index.js",
 	"repository": "https://github.com/cluracan/flex-contract",
 	"author": "Lawrence Forman <not.larry@klv.io>",
@@ -12,9 +12,8 @@
 	},
 	"dependencies": {
 		"bignumber.js": "^7.2.1",
-		"ethereumjs-tx": "^1.3.6",
+		"ethereumjs-tx": "1.3.4",
 		"ethereumjs-util": "^5.2.0",
-		"ethjs-abi": "^0.2.1",
 		"lodash": "^4.17.10",
 		"web3": "^1.0.0-beta.34"
 	},
