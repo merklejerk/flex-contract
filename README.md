@@ -73,7 +73,7 @@ await contract.myTransactionFn('1337', {key: PRIVATE_KEY});
 - [Receipt events](#receipt-events)
 - [Past events](#past-events)
 - [Live events](#live-events)
-- [Encoding/Decoding](#encoding-decoding-rules)
+- [Encoding/Decoding Rules](#encodingdecoding-rules)
 
 ### Creating a flex contract
 The only requirement for creating an instance is the ABI, which can be a plain
@@ -163,7 +163,7 @@ caller by either passing the `from` or `key` option.
 
 Functions that return multiple values will resolve to an object whose keys are
 *both* the return value name (if available) and position index.
-See [Encoding/Decoding Rules](#encoding-decoding-rules) for more information on how
+See [Encoding/Decoding Rules](#encodingdecoding-rules) for more information on how
 arguments and return values are encoded and decoded.
 
 ```javascript
@@ -236,8 +236,8 @@ Ethereum. However, transactions will resolve to a receipt object, which
 contains an `event` array of all (known) events that were raised during the
 transaction (see [Receipt Events](#receipt-events)).
 
-See [Encoding/Decoding](#encoding-decoding) for more information on how
-arguments and event logs are encoded and decoded.
+See [Encoding/Decoding Rules](#encodingdecoding-rules) for more information on
+how arguments and event logs are encoded and decoded.
 
 ```javascript
 const FlexContract = require('flex-contract');
