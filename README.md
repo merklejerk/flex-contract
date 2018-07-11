@@ -1,3 +1,5 @@
+![build status](https://travis-ci.org/cluracan/flex-contract.svg?branch=master)
+
 # flex-contract
 An Ethereum smart contract abstraction for power users that:
 
