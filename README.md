@@ -152,7 +152,7 @@ new FlexContract(ABI, {
 ```
 
 ### Making read-only (constant) calls
-Constant contract functions (view, pure, etc.) is are exposed as async methods
+Constant contract functions (view, pure, etc.) are exposed as async methods
 on the contract instance, which resolve to the returned value(s) of each
 function. Function arguments can be passed normally, by position, or by name
 through the `args` option.
