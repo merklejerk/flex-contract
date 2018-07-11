@@ -1,5 +1,5 @@
 language: node_js
 install:
-   - npm -D install
+   - yarn -D install
 node_js:
    - "node"
