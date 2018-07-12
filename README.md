@@ -593,7 +593,7 @@ const contract = new FlexContract(ABI, DEPLOYED_AT);
 const cloned = conract.clone({
    // Set the deployed address.
    address: undefined,
-   // Set the contract's bytecode, used in `new()`
+   // Set the contract's bytecode, used in `new()`.
    bytecode: undefined,
    // Set the gas price bonus.
    // Should be a number, where 0.01 = +1%.
@@ -604,7 +604,7 @@ const cloned = conract.clone({
    // Use a web3 instance.
    web3: undefined,
    // Use a provider instance.
-   providerURI: undefined,
+   provider: undefined,
    // Connect to a different providerURI (.e.g, 'http://localhost:8545').
    providerURI: undefined,
    // Connect to a different network ('main', 'rinkeby', 'ropsten', 'kovan').
