@@ -28,7 +28,8 @@ function toHex(v) {
 }
 
 function privateKeyToAddress(key) {
-	return '0x'+(ethjs.privateToAddress(ethjs.toBuffer(key)).toString('hex'));
+	return ethjs.toChecksumAddress(
+		'0x'+(ethjs.privateToAddress(ethjs.toBuffer(key)).toString('hex')));
 }
 
 module.exports = {

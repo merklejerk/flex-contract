@@ -89,7 +89,7 @@ module.exports = class FlexContract {
 		if (_.isString(v)) {
 			if (!ethjs.isValidAddress(v))
 				throw new Error(`Invalid address: ${v}`);
-			this._address = v.toLowerCase();
+			this._address = ethjs.toChecksumAddress(v);
 			module.exports.ABI_CACHE[this._address] = this._abi;
 		}
 		else
@@ -105,11 +105,11 @@ module.exports = class FlexContract {
 		const def = findDef(this._abi, {type: 'constructor', args: args});
 		if (!def)
 			throw new Error(`Cannot find matching constructor for given arguments`);
-		const r = wrapSendTxPromise(this, sendTx(this, def, args, opts));
+		const r = wrapSendTxPromise(this, null, sendTx(this, def, args, opts));
 		// Set address and cache the ABI on successful deploy.
 		r.receipt.then(
 			receipt => {
-				const addr = receipt.contractAddress.toLowerCase();
+				const addr = ethjs.toChecksumAddress(receipt.contractAddress);
 				this._address = addr;
 				module.exports.ABI_CACHE[addr] = this._abi;
 			});
@@ -226,7 +226,8 @@ function initMethods(inst, abi) {
 						throw new Error(`Cannot find matching function '${name}' for given arguments`);
 					if (def.constant)
 						return callTx(inst, def, args, opts);
-					return wrapSendTxPromise(inst, sendTx(this, def, args, opts));
+					return wrapSendTxPromise(inst, opts.address || opts.to,
+						sendTx(this, def, args, opts));
 				};
 		}
 	}
@@ -332,12 +333,12 @@ async function createCallOpts(inst, def, args, opts) {
 		gasPrice: util.toHex(gasPrice),
 		gasLimit: util.toHex(gasLimit),
 		value: util.toHex(value),
-		data: data || '0x'
+		data: data || '0x',
 	};
 	if (to)
-		_opts.to = to.toLowerCase();
+		_opts.to = _.isString(to) ? ethjs.toChecksumAddress(to) : to;
 	if (from)
-		_opts.from = _.isString(from) ? from.toLowerCase() : from;
+		_opts.from = _.isString(from) ? ethjs.toChecksumAddress(from) : from;
 	return _opts;
 }
 
@@ -402,7 +403,7 @@ async function getFirstAccount(web3) {
 		return accts[0];
 }
 
-function wrapSendTxPromise(inst, promise) {
+function wrapSendTxPromise(inst, address, promise) {
 	const wrapper = new Promise(async (accept, reject) => {
 		try {
 			const {sent} = await promise;
@@ -411,7 +412,7 @@ function wrapSendTxPromise(inst, promise) {
 				if (!r.status)
 					return reject('Transaction failed.');
 				try {
-					return accept(augmentReceipt(inst, r));
+					return accept(augmentReceipt(inst, address, r));
 				} catch (err) {
 					reject(err);
 				}
@@ -441,13 +442,14 @@ function decodeCallOutput(def, encoded) {
 	return decoded;
 }
 
-function augmentReceipt(inst, receipt) {
+function augmentReceipt(inst, address, receipt) {
+	address = address || receipt.contractAddress || inst._address;
+	address = ethjs.toChecksumAddress(address);
 	// Parse logs into events.
-	const groups = _.mapKeys(_.groupBy(receipt.logs, 'address'),
-		(v,k) => k.toLowerCase());
+	const groups = _.groupBy(receipt.logs, 'address');
 	const events = [];
 	for (let contract in groups) {
-		const abi = (contract == inst._address) ?
+		const abi = (contract == address) ?
 			inst._abi : module.exports.ABI_CACHE[contract];
 		if (!abi)
 			continue;
@@ -469,7 +471,7 @@ function decodeLogItem(abi, log) {
 	return {
 		name: decoded.name,
 		args: decoded.args,
-		address: log.address.toLowerCase(),
+		address: log.address,
 		blockNumber: log.blockNumber,
 		logIndex: log.logIndex,
 		transactionHash: log.transactionHash

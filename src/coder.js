@@ -3,6 +3,7 @@ const _ = require('lodash');
 const Web3 = require('web3');
 const keccak256 = Web3.utils.keccak256;
 const assert = require('assert');
+const ethjs = require('ethereumjs-util');
 const coder = require('./lib/web3.js/lib/solidity/coder')
 const util = require('./util');
 
@@ -28,11 +29,13 @@ function encodeLogTopicsFilter(eventABI, args=[]) {
 
 function encodeValue(type, v) {
 	assert(!_.isNil(v));
+	v = normalizeEncodeValue(type, v);
 	return util.addHexPrefix(coder.encodeParam(type, v));
 }
 
 function encodePackedValues(types, values) {
 	assert(types.length == values.length);
+	values = _.times(types.length, i => normalizeEncodeValue(types[i], values[i]));
 	return util.addHexPrefix(coder.encodeParams(types, values));
 }
 
@@ -55,9 +58,20 @@ function decodePackedValues(types, v) {
 	return r;
 }
 
+function normalizeEncodeValue(type, v) {
+	if (_.isArray(v)) {
+		const elementType = /^(.+)\[\]$/.exec(type)[1];
+		assert(elementType);
+		return _.map(v, _v => normalizeEncodeValue(elementType, v));
+	}
+	if (type == 'address' || /^bytes\d+$/.test(type))
+		return v.toLowerCase();
+	return v;
+}
+
 function normalizeDecodedValue(type, v) {
 	if (type == 'address')
-		return v.toLowerCase();
+		return ethjs.toChecksumAddress(v);
 	if (/^u?int\d+$/.test(type) && _.isObject(v))
 		return v.toString(10);
 	if (_.isArray(v)) {

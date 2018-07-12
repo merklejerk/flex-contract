@@ -190,7 +190,7 @@ await contract.getBytes32(arg1, arg2, ...[moreArgs], opts);
 // Returns a string: e.g, 'foobar...'
 await contract.getString(arg1, arg2, ...[moreArgs], opts);
 // Calling a function named 'getAddress' that returns an address.
-// Returns a lowercase hex string: e..g, '0x1234...'
+// Returns a checksum, mixed-case address: e.g., '0x5b690eb0f08DB37734E1a99e37D324c059fDA753'
 await contract.getAddress(arg1, arg2, ...[moreArgs], opts);
 // Calling a function named 'getUint256Array' that returns an array of uint256.
 // Returns an array of base-10 strings: e.g., ['1234', '1235', ...]
@@ -572,10 +572,11 @@ converted to base-10 or base-16 string (.e.g, `'1234'` or `'0x04d2'`).
 - Decoded as a base-10 string. (.e.g., `'1234'`).
 
 ##### Bytes and Address Types
-- Should be passed in as a hex-encoded string (.e.g, `'0x1337b33f...'`).
+- Should be passed in as a hex string (.e.g, `'0x1337b33f...'`).
 - If they are not the correct size, they will be left-padded to fit, *which
 can have unintended consequences*, so you should normalize the input yourself.
-- Decoded as a lowercase hex-encoded string (.e.g, `'0x1337b33f...'`).
+- Bytes types are decoded as a lowercase hex string (.e.g, `'0x1337b33f...'`).
+- Address types are decoded as a *checksum* address, which is a mixed case hex string.
 
 ### Cloning
 You can clone an existing flex-contract instance with the `clone()` method.

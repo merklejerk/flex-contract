@@ -58,7 +58,7 @@ describe('flex-contract', function() {
 		assert.equal(await c.constFn(), 1);
 		assert.equal(await c.constFn(1), 2);
 		assert.equal(await c.constFn(1, 2), 3);
-		const addr = randomHex(20);
+		const addr = randomAddress();
 		assert.equal(await c.echoAddress(addr), addr);
 		const array = _.times(3, () => randomHex(32));
 		assert.equal(_.difference(await c.echoArray(array), array).length, 0);
@@ -70,7 +70,7 @@ describe('flex-contract', function() {
 		assert.equal(await c.constFn({args:{}}), 1);
 		assert.equal(await c.constFn({args:{a: 1}}), 2);
 		assert.equal(await c.constFn({args:{a: 1, b: 2}}), 3);
-		const addr = randomHex(20);
+		const addr = randomAddress();
 		assert.equal(await c.echoAddress({args: {a: addr}}), addr);
 		const array = _.times(3, () => randomHex(32));
 		assert.equal(_.difference(await c.echoArray({args: {a: array}}), array).length, 0);
@@ -79,7 +79,7 @@ describe('flex-contract', function() {
 	it('can get multiple return values from constant function', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultiple(...args);
 		for (let i = 0; i < args; i++)
 			assert.equal(r, args[i]);
@@ -88,7 +88,7 @@ describe('flex-contract', function() {
 	it('can get multiple named return values from constant function', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultipleNamed(...args);
 		for (let i = 0; i < args; i++)
 			assert.equal(r, args[i]);
@@ -97,7 +97,7 @@ describe('flex-contract', function() {
 	it('can refer to named multiple return values from constant function by name', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultipleNamed(...args);
 		assert.equal(r['r0'], args[0]);
 		assert.equal(r['r1'], args[1]);
@@ -137,7 +137,7 @@ describe('flex-contract', function() {
 	it('can get a single receipt event', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c.raiseEvent(...args);
 		const event = receipt.events[0];
 		assert.equal(event.address, c.address);
@@ -151,7 +151,7 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const count = 3;
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c.raiseEvents(count, ...args);
 		const events = receipt.events.sort((a,b) => a.args.idx - b.args.idx);
 		for (let i = 0; i < events.length; i++) {
@@ -169,7 +169,7 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const count = 3;
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt =await c.raiseEvents(count, ...args);
 		const event = receipt.findEvent('RepeatedEvent',
 			{idx: 1, a: args[0], b: args[1], c: args[2]});
@@ -186,10 +186,28 @@ describe('flex-contract', function() {
 		const c2 = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c1.new();
 		await c2.new();
-		const args = [randomHex(20), _.random(1, 1e6), randomHex(32)];
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c1.callOther(c2.address, ...args);
 		const event = receipt.events[0];
 		assert.equal(event.address, c2.address);
+		assert.equal(event.name, 'SingleEvent');
+		assert.equal(event.args.a, args[0]);
+		assert.equal(event.args.b, args[1]);
+		assert.equal(event.args.c, args[2]);
+	});
+
+	it('can get receipt event with address override', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		// Don't let it fall back to the cache or defined address.
+		const address = c.address;
+		assert.ok(FlexContract.ABI_CACHE[address]);
+		delete FlexContract.ABI_CACHE[address];
+		c.address = null;
+		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
+		const receipt = await c.raiseEvent(...args, {address: address});
+		const event = receipt.events[0];
+		assert.equal(event.address, address);
 		assert.equal(event.name, 'SingleEvent');
 		assert.equal(event.args.a, args[0]);
 		assert.equal(event.args.b, args[1]);
@@ -206,7 +224,7 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const argss = _.times(8, () =>
-			[randomHex(20), _.random(1, 1e6), randomHex(32)]);
+			[randomAddress(), _.random(1, 1e6), randomHex(32)]);
 		for (let args of argss)
 			await c.raiseEvent(...args);
 		const r = await c.SingleEvent({fromBlock: -argss.length});
@@ -221,11 +239,11 @@ describe('flex-contract', function() {
 		}
 	});
 
-	it('can get past events with array filter args', async function() {
+	it('can get past events with positional filter args', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const choices = [
-			_.times(2, () => randomHex(20)),
+			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
 			_.times(2, () => randomHex(32))
 		];
@@ -259,7 +277,7 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const choices = [
-			_.times(2, () => randomHex(20)),
+			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
 			_.times(2, () => randomHex(32))
 		];
@@ -303,7 +321,7 @@ describe('flex-contract', function() {
 		const logs = [];
 		watch.on('data', log => logs.push(log));
 		const argss = _.times(8, () =>
-			[randomHex(20), _.random(1, 1e6), randomHex(32)]);
+			[randomAddress(), _.random(1, 1e6), randomHex(32)]);
 		for (let args of argss) {
 			await c.raiseEvents(1, ...args);
 			await c.raiseEvent(...args);
@@ -325,7 +343,7 @@ describe('flex-contract', function() {
 		await c.new();
 		const logs = [];
 		const choices = [
-			_.times(2, () => randomHex(20)),
+			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
 			_.times(2, () => randomHex(32))
 		];
@@ -356,7 +374,7 @@ describe('flex-contract', function() {
 		await c.new();
 		const logs = [];
 		const choices = [
-			_.times(2, () => randomHex(20)),
+			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
 			_.times(2, () => randomHex(32))
 		];
@@ -391,7 +409,7 @@ describe('flex-contract', function() {
 		const logs = [];
 		watch.on('data', log => logs.push(log));
 		const argss = _.times(4, () =>
-			[randomHex(20), _.random(1, 1e6), randomHex(32)]);
+			[randomAddress(), _.random(1, 1e6), randomHex(32)]);
 		for (let args of argss) {
 			await c.raiseEvents(1, ...args);
 			await c.raiseEvent(...args);
@@ -409,6 +427,10 @@ describe('flex-contract', function() {
 
 function randomHex(size=32) {
 	return '0x'+crypto.randomBytes(size).toString('hex');
+}
+
+function randomAddress() {
+	return ethjs.toChecksumAddress(randomHex(20));
 }
 
 function wait(ms) {
