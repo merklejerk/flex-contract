@@ -33,11 +33,11 @@ const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6b
 // Define a contract interface on ropsten.
 let contract = new FlexContract(ABI, {bytecode: BYTECODE, network: 'ropsten'});
 // Deploy it, signed by an arbitrary account.
-const {txId, receipt} = contract.new({key: PRIVATE_KEY});
+const tx = contract.new({key: PRIVATE_KEY});
 // Get the transaction hash.
-await txId;
-// Get the receipt.
-await receipt;
+await tx.txId;
+// Get the receipt, you can also just wait on the `tx` object itself.
+await tx.receipt;
 // Make a transaction call to the newly deployed contract.
 const receipt2 = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
 // Find some transaction events.
@@ -74,6 +74,8 @@ await contract.myTransactionFn('1337', {key: PRIVATE_KEY});
 - [Past events](#past-events)
 - [Live events](#live-events)
 - [Encoding/Decoding Rules](#encodingdecoding-rules)
+- [Cloning](#cloning)
+- [Instance Properties](#instance-properties)
 
 ### Creating a flex contract
 The only requirement for creating an instance is the ABI, which can be a plain
@@ -280,7 +282,22 @@ await contract.myTransactionFn(...[args], {
    // Hex-encoded string private key.
    // Signs the transaction with this private key and sends it from the address
    // associated with it. Overrides 'from' option.
-   key: undefined
+   key: undefined,
+   // Gas price to use, as a hex or base-10 string, in wei.
+   // If not specified, calculated from network gas price and bonus.
+   gasPrice: undefined,
+   // Execution gas limit.
+   // Should be a Number.
+   // If not specified, calculated via `web3.eth.estimateGas()` and bonus.
+   gas: undefined,
+   // Bonus to apply to gas price calculations.
+   // Should be a positive or negative Number, where 0.01 = +1%.
+   // If omitted, `contract.gasPriceBonus` will be used.
+   gasPriceBonus: undefined,
+   // Bonus to apply to gas limit calculations.
+   // Should be a positive or negative Number, where 0.01 = +1%.
+   // If omitted, `contract.gasBonus` will be used.
+   gasBonus: undefined
 })
 ```
 
@@ -316,12 +333,12 @@ await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
 // Result: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
 
 // Make a transaction call and wait on both separately.
-const r = contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
+const tx = contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
 // Wait on transaction hash.
-await r.txId; // '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
+await tx.txId; // '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
 // Wait on receipt.
-// Exactly the same as doing `await r`.
-await r.receipt; // {blockNumber:..., etc.}
+// Exactly the same as doing `await tx`.
+await tx.receipt; // {blockNumber:..., etc.}
 ```
 
 ### Deploying a new contract instance
@@ -353,6 +370,9 @@ await contract.new(arg1, arg2, ...[moreArgs], opts);
 contract.address; // '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5'
 // Full deployment option defaults:
 await contract.new(...[args], {
+   // Bytecode to deploy, as a hex string.
+   // If not provided, contract.bytecode will be used.
+   bytecode: String,
    // Named arguments.
    // Do not pass positional arguments if used.
    // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
@@ -364,7 +384,22 @@ await contract.new(...[args], {
    // Hex-encoded string private key.
    // Signs the transaction with this private key and sends it from the address
    // associated with it. Overrides 'from' option.
-   key: undefined
+   key: undefined,
+   // Gas price to use, as a hex or base-10 string, in wei.
+   // If not specified, calculated from network gas price and bonus.
+   gasPrice: undefined,
+   // Execution gas limit.
+   // Should be a Number.
+   // If not specified, calculated via `web3.eth.estimateGas()` and bonus.
+   gas: undefined,
+   // Bonus to apply to gas price calculations.
+   // Should be a positive or negative Number, where 0.01 = +1%.
+   // If omitted, `contract.gasPriceBonus` will be used.
+   gasPriceBonus: undefined,
+   // Bonus to apply to gas limit calculations.
+   // Should be a positive or negative Number, where 0.01 = +1%.
+   // If omitted, `contract.gasBonus` will be used.
+   gasBonus: undefined
 })
 ```
 
@@ -540,3 +575,51 @@ converted to base-10 or base-16 string (.e.g, `'1234'` or `'0x04d2'`).
 - If they are not the correct size, they will be left-padded to fit, *which
 can have unintended consequences*, so you should normalize the input yourself.
 - Decoded as a lowercase hex-encoded string (.e.g, `'0x1337b33f...'`).
+
+### Cloning
+You can clone an existing flex-contract instance with the `clone()` method.
+This method accepts an options object that overrides certain properties of the
+original instance.
+
+```javascript
+const FlexContract = require('flex-contract');
+const ABI = require('./MyContract.ABI.json');
+
+const contract = new FlexContract(ABI, DEPLOYED_AT);
+// Clone options defaults.
+// Options left out will be inherited from the original.
+const cloned = conract.clone({
+   // Set the deployed address.
+   address: undefined,
+   // Set the contract's bytecode, used in `new()`
+   bytecode: undefined,
+   // Set the gas price bonus.
+   // Should be a number, where 0.01 = +1%.
+   gasPriceBonus: undefined,
+   // Set the gas limit bonus.
+   // Should be a number, where 0.01 = +1%.
+   gasLimitBonus: undefined,
+   // Use a web3 instance.
+   web3: undefined,
+   // Use a provider instance.
+   providerURI: undefined,
+   // Connect to a different providerURI (.e.g, 'http://localhost:8545').
+   providerURI: undefined,
+   // Connect to a different network ('main', 'rinkeby', 'ropsten', 'kovan').
+   network: undefined,
+   // Use an infura API key. You should provide the `network` option as well
+   // if you pass this, or else it will default to `main`.
+   infuraKey: undefined
+});
+```
+
+### Instance Properties
+A contract instance exposes a few properties, most of which you are free to
+change. Many of these can also be overridden in individual call options.
+
+- `address (String)` Address the contract is deployed to.
+- `gasBonus (Number)` Gas limit estimate bonus for transactions, where `0.01 = +1%`. May be negative.
+- `gasPriceBonus (Number)` Gas price bonus for transactions, where `0.01 = +1%`. May be negative.
+- `bytecode` Bytecode of the contract, used for deployment with `new()`.
+- `web3 (Web3)` Web3 instance used.
+- `abi` (Read-only) The ABI defining the contract.

@@ -120,6 +120,20 @@ describe('flex-contract', function() {
 		assert.equal(bal, 100);
 	});
 
+	it('can call a cloned a contract', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		const clone = c.clone();
+		await clone.constFn();
+		await clone.transact();
+	});
+
+	it('can deploy a cloned a contract', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		const clone = c.clone();
+		await clone.new();
+	});
+
 	it('can get a single receipt event', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();

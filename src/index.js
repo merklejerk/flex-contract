@@ -9,25 +9,67 @@ const BigNumber = require('bignumber.js');
 const EventEmitter = require('events');
 const assert = require('assert');
 
-module.exports = class {
+module.exports = class FlexContract {
 	constructor(abi, opts={}) {
+		if (abi instanceof FlexContract) {
+			// Clone.
+			return this._copy(abi, opts)
+		}
 		if (_.isString(opts)) {
 			opts = {address: opts};
 		}
-		const provider = opts.provider || createProvider(opts);
-		const web3 = this._web3 = opts.web3 || new Web3(provider);
-		this._chainId = web3.eth.net.getId();
-		this.abi = abi.abi || abi.abiDefinition || abi;
+		if (!opts.web3)
+			this._web3 = new Web3(opts.provider || createProvider(opts));
+		else
+			this._web3 = opts.web3;
+		this._chainId = this._web3.eth.net.getId();
+		this._abi = abi.abi || abi.abiDefinition || abi;
 		this.bytecode = opts.bytecode || abi.bytecode || abi.code
 			|| abi.binary || null;
 		this.address = opts.address;
-		this.contract = new web3.eth.Contract(this.abi, opts.address);
-		this.gasBonus = opts.gasBonus || 0.33;
-		this.gasPriceBonus = opts.gasPriceBonus || -0.005;
-		initMethods(this, this.abi);
-		initEvents(this, this.abi);
-		if (this._address)
-			module.exports.ABI_CACHE[this._address] = abi;
+		this._contract = new this._web3.eth.Contract(this._abi, opts.address);
+		this.gasBonus = _.isNumber(opts.gasBonus) ? opts.gasBonus : 0.33;
+		this.gasPriceBonus = _.isNumber(opts.gasPriceBonus) ?
+			opts.gasPriceBonus : -0.005;
+		initMethods(this, this._abi);
+		initEvents(this, this._abi);
+	}
+
+	_copy(inst, opts={}) {
+		if (!opts.web3) {
+			if (opts.provider)
+				this._web3 = new Web3(opts.provider);
+			else if (opts.providerURI || opts.network || opts.infuraKey)
+				this._web3 = new Web3(createProvider(opts));
+			else
+				this._web3 = inst._web3;
+		}
+		else
+			this._web3 = opts.web3;
+		this._chainId = this._web3.eth.net.getId();
+		this._abi = inst._abi;
+		this.address = opts.address || inst._address;
+		this.bytecode = opts.bytecode || inst.bytecode;
+		this._contract = inst._contract;
+		this.gasBonus = _.isNumber(opts.gasBonus) ?
+			opts.gasBonus : inst.gasBonus;
+		this.gasPriceBonus = _.isNumber(opts.gasPriceBonus) ?
+			opts.gasPriceBonus : inst.gasPriceBonus;
+		initMethods(this, this._abi);
+		initEvents(this, this._abi);
+		return this;
+	}
+
+	clone(opts={}) {
+		return new FlexContract(this, opts);
+	}
+
+	get abi() {
+		return this._abi;
+	}
+
+	get contract() {
+		return this._contract;
 	}
 
 	get web3() {
@@ -48,7 +90,7 @@ module.exports = class {
 			if (!ethjs.isValidAddress(v))
 				throw new Error(`Invalid address: ${v}`);
 			this._address = v.toLowerCase();
-			module.exports.ABI_CACHE[this._address] = this.abi;
+			module.exports.ABI_CACHE[this._address] = this._abi;
 		}
 		else
 			this._address = undefined;
@@ -60,7 +102,7 @@ module.exports = class {
 
 	new(..._args) {
 		const {args, opts} = parseMethodCallArgs(_args);
-		const def = findDef(this.abi, {type: 'constructor', args: args});
+		const def = findDef(this._abi, {type: 'constructor', args: args});
 		if (!def)
 			throw new Error(`Cannot find matching constructor for given arguments`);
 		const r = wrapSendTxPromise(this, sendTx(this, def, args, opts));
@@ -69,7 +111,7 @@ module.exports = class {
 			receipt => {
 				const addr = receipt.contractAddress.toLowerCase();
 				this._address = addr;
-				module.exports.ABI_CACHE[addr] = this.abi;
+				module.exports.ABI_CACHE[addr] = this._abi;
 			});
 		return r;
 	}
@@ -275,12 +317,12 @@ async function resolveBlockDirective(inst, directive) {
 
 async function createCallOpts(inst, def, args, opts) {
 	const web3 = inst._web3;
-	const data = opts.data || createCallData(inst, def, args);
+	const data = opts.data || createCallData(inst, def, args, opts);
 	const from = opts.from ||
 		(opts.key ? util.privateKeyToAddress(opts.key) : undefined) ||
 		web3.eth.defaultAccount || await getFirstAccount(web3);
 	const chainId = opts.chainId || await inst._chainId;
-	const gasPrice = opts.gasPrice || await getGasPrice(inst);
+	const gasPrice = opts.gasPrice || await getGasPrice(inst, opts);
 	const gasLimit = opts.gas || opts.gasLimit ||
 		await estimateGas(inst, def, args, opts);
 	const value = opts.value || 0;
@@ -307,8 +349,13 @@ async function estimateGas(inst, def, args, opts) {
 	const _opts = await createCallOpts(inst, def, args, opts);
 	if (!_opts.from)
 		throw Error('Cannot determine caller.');
+	let gasBonus = 0;
+	if (_.isNumber(opts.gasBonus))
+		gasBonus = opts.gasBonus;
+	else if (_.isNumber(inst.gasBonus))
+		gasBonus = inst.gasBonus;
 	const gas = await inst._web3.eth.estimateGas(_opts, _opts.block);
-	return Math.ceil(gas * (1+(inst.gasBonus || 0)));
+	return Math.ceil(gas * (1+gasBonus));
 }
 
 async function callTx(inst, def, args, opts) {
@@ -323,7 +370,7 @@ async function callTx(inst, def, args, opts) {
 
 async function sendTx(inst, def, args, opts) {
 	opts = _.assign({}, opts, {
-			gasPrice: opts.gasPrice || await getGasPrice(inst),
+			gasPrice: opts.gasPrice || await getGasPrice(inst, opts),
 			gasLimit: opts.gasLimit || await estimateGas(inst, def, args, opts),
 		});
 	const _opts = await createCallOpts(inst, def, args, opts);
@@ -401,7 +448,7 @@ function augmentReceipt(inst, receipt) {
 	const events = [];
 	for (let contract in groups) {
 		const abi = (contract == inst._address) ?
-			inst.abi : module.exports.ABI_CACHE[contract];
+			inst._abi : module.exports.ABI_CACHE[contract];
 		if (!abi)
 			continue;
 		for (let log of groups[contract]) {
@@ -451,23 +498,29 @@ function findEvents(name, args, events) {
 	return found;
 }
 
-async function getGasPrice(inst) {
+async function getGasPrice(inst, opts) {
 	const web3 = inst._web3;
+	let gasPriceBonus = 0;
+	if (_.isNumber(opts.gasPriceBonus))
+		gasPriceBonus = opts.gasPriceBonus;
+	if (_.isNumber(inst.gasPriceBonus))
+		gasPriceBonus = inst.gasPriceBonus
 	return new BigNumber(await web3.eth.getGasPrice())
-		.times(1+(inst.gasPriceBonus || 0)).toString(10);
+		.times(1+(gasPriceBonus)).toString(10);
 }
 
-function createCallData(inst, def, args) {
-	const contract = inst.contract;
+function createCallData(inst, def, args, opts) {
+	const contract = inst._contract;
 	const _args = arrangeCallArgs(args, def);
 	if (def.type == 'constructor') {
-		if (!inst.bytecode)
-			throw new Error('Contract has no bytecode defined.');
-		return inst.contract.deploy(
-				{data: util.addHexPrefix(inst.bytecode), arguments: _args})
+		const bytecode = opts.bytecode || inst.bytecode;
+		if (!bytecode)
+			throw new Error('Contract has no bytecode defined and it was not provided.');
+		return inst._contract.deploy(
+				{data: util.addHexPrefix(bytecode), arguments: _args})
 			.encodeABI();
 	}
-	return inst.contract.methods[def.name](..._args).encodeABI();
+	return inst._contract.methods[def.name](..._args).encodeABI();
 }
 
 function arrangeCallArgs(args, def, opts={}) {
