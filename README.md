@@ -302,12 +302,13 @@ await contract.myTransactionFn(...[args], {
 ```
 
 ### Transaction promises
-All transaction calls (including `new`) return a Promise object that resolves
-to a the transaction receipt, once the transaction has been mined. This Promise
-object also has the fields `txId` and `receipt`, which are also Promises that
-resolve with the transaction hash and the receipt, respectively.
-The transaction hash, which resolves when the transaction is posted, will
-typically resolve much sooner than the receipt.
+All transaction calls (including `new()`) return a Promise object that resolves
+to the
+[transaction receipt](https://web3js.readthedocs.io/en/1.0/web3-eth.html#eth-gettransactionreceipt-return),
+once the transaction has been mined. This Promise object also has the fields
+`txId` and `receipt`, which are also Promises that resolve with the transaction
+ hash and the receipt, respectively. The transaction hash, which resolves when
+ the transaction is posted, will typically resolve much sooner than the receipt.
 
 **Example**
 ```javascript
