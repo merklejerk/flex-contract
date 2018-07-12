@@ -1,6 +1,6 @@
 {
 	"name": "flex-contract",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "An Ethereum smart contract abstraction for power users.",
 	"main": "src/index.js",
 	"repository": "https://github.com/cluracan/flex-contract",
@@ -8,7 +8,7 @@
 	"license": "Apache-2.0",
 	"private": false,
 	"scripts": {
-		"test": "mocha --timeout 10000 ./tests/*.js"
+		"test": "mocha --timeout 5000 ./test/*.js"
 	},
 	"dependencies": {
 		"bignumber.js": "^7.2.1",

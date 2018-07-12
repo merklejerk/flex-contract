@@ -2,7 +2,7 @@
 ![npm package](https://badge.fury.io/js/flex-contract.svg)
 
 # flex-contract
-An Ethereum smart contract abstraction for power users that:
+A modern Ethereum smart contract abstraction for power users that:
 
 - Requires minimal configuration to get going on all networks (no provider necessary).
 - Can sign and send transactions from arbitrary accounts.

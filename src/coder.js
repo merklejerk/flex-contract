@@ -3,7 +3,7 @@ const _ = require('lodash');
 const Web3 = require('web3');
 const keccak256 = Web3.utils.keccak256;
 const assert = require('assert');
-const coder = require('../lib/web3.js/lib/solidity/coder')
+const coder = require('./lib/web3.js/lib/solidity/coder')
 const util = require('./util');
 
 function encodeLogSignature(eventABI) {
