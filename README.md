@@ -216,7 +216,9 @@ await contract.myConstantFn(...[args], {
    address: undefined,
    // Hex-encoded private key.
    // Makes the call from the address derived from this private key.
-   key: undefined
+   key: undefined,
+   // Make the call against the blockchain's state at a specific block number.
+   block: undefined
 });
 ```
 

@@ -333,7 +333,7 @@ async function createCallOpts(inst, def, args, opts) {
 		gasPrice: util.toHex(gasPrice),
 		gasLimit: util.toHex(gasLimit),
 		value: util.toHex(value),
-		data: data || '0x',
+		data: data || '0x'
 	};
 	if (to)
 		_opts.to = _.isString(to) ? ethjs.toChecksumAddress(to) : to;
@@ -365,6 +365,8 @@ async function callTx(inst, def, args, opts) {
 			gasLimit: module.exports.MAX_GAS,
 		});
 	const _opts = await createCallOpts(inst, def, args, opts);
+	if (!_opts.to && def.type != 'constructor')
+		throw Error('Contract has no address.');
 	return decodeCallOutput(def,
 		await inst._web3.eth.call(_opts, _opts.block));
 }
