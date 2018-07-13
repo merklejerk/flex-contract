@@ -410,19 +410,21 @@ function wrapSendTxPromise(inst, address, promise) {
 	let confirmations = 0;
 	// Count confirmations.
 	promise.then(({sent}) => {
-		/*
-		sent.on('confirmation', (n, _receipt) => {
-			console.log(n);
+		const handler = (n, _receipt) => {
 			receipt = _receipt;
 			confirmations = Math.max(confirmations, n);
-		});*/
+			// Don't listen beyond 12 confirmations.
+			if (n >= 12)
+				sent.removeAllListeners();
+		};
+		sent.on('confirmation', handler);
 	});
 	// Create a promise that resolves with the receipt.
 	const wrapper = new Promise(async (accept, reject) => {
-		try {
-			const {sent} = await promise;
+		promise.catch(reject);
+		promise.then(({sent}) => {
 			sent.on('error', reject);
-			sent.on('receipt', r => {
+			sent.on('receipt', r=> {
 				if (!r.status)
 					return reject('Transaction failed.');
 				try {
@@ -431,25 +433,23 @@ function wrapSendTxPromise(inst, address, promise) {
 					reject(err);
 				}
 			});
-		} catch (err) {
-			reject(err); throw err;
-		}
+		});
 	});
 	wrapper.receipt = wrapper;
 	// Create a promise that resolves with the transaction hash.
-	wrapper.txId = new Promise(async (accept, reject) => {
-		try {
-			const {sent} = await promise;
+	wrapper.txId = new Promise((accept, reject) => {
+		promise.catch(reject);
+		promise.then(({sent}) => {
 			sent.on('error', reject);
 			sent.on('transactionHash', accept);
-		} catch (err) {
-			reject(err); throw err;
-		}
+		});
 	});
 	// Create a function that creates a promise that resolves after a number of
 	// confirmations.
 	wrapper.confirmed = (count) => {
 			count = count || 1;
+			if (count > 12)
+				throw new Error('Maximum confirmations is 12.');
 			// If we've already seen the confirmation, resolve immediately.
 			if (confirmations >= count) {
 				assert(receipt);
@@ -458,7 +458,7 @@ function wrapSendTxPromise(inst, address, promise) {
 			// Create a promise that'll get called by the confirmation handler.
 			return new Promise((accept, reject) => {
 				promise.catch(reject);
-				promise.then(sent => {
+				promise.then(({sent}) => {
 					sent.on('error', reject);
 					sent.on('confirmation', (_count, receipt) => {
 						if (_count == count)

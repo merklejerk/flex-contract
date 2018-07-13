@@ -22,16 +22,15 @@ describe('flex-contract', function() {
 			secretKey: crypto.randomBytes(32),
 			balance: 100 + _.repeat('0', 18)
 		}));
-		_ganache = ganache.server({
+		provider = ganache.provider({
 			accounts: accounts
 		});
-		await promisify(_ganache.listen)(8545);
-		provider = _ganache.provider;
-		provider.setMaxListeners(1024);
+		// Suppress max listener warnings.
+		provider.setMaxListeners(4096);
+		provider.engine.setMaxListeners(4096);
 	});
 
 	after(async function() {
-		await promisify(_ganache.close)();
 		_.each(watches, w => w.close());
 	});
 
@@ -112,11 +111,29 @@ describe('flex-contract', function() {
 		assert.ok(await r.receipt);
 	});
 
-	it('can transact and wait for confirmation', async function() {
+	it('can wait for confirmation', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		const r = c.transact();
-		//assert.ok(await r.confirmation(4));
+		await r;
+		const confirmed = (async () => {
+			return r.confirmed(4);
+		})();
+		// Force ganache to mine some new blocks and send confirmations.
+		for (let i = 0; i < 4; i++)
+			await c.transact();
+		assert.ok(await confirmed);
+	});
+
+	it('can wait for confirmation after it already happened', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		const r = c.transact();
+		await r;
+		// Force ganache to mine some new blocks and send confirmations.
+		for (let i = 0; i < 4; i++)
+			await c.transact();
+		assert.ok(await r.confirmed(4));
 	});
 
 	it('can transact and pay', async function() {

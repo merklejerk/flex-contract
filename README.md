@@ -8,7 +8,7 @@ A modern Ethereum smart contract abstraction for power users that:
 - Can sign and send transactions from arbitrary accounts.
 - Can decode internal events (transaction events raised in other contracts).
 - Facilitates easy event filtering and monitoring.
-- Provides separate promises for transaction hashes and receipts.
+- Provides separate promises for transaction hashes, receipts, and confirmations.
 
 ## Installation
 ```bash
@@ -34,10 +34,12 @@ const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6b
 let contract = new FlexContract(ABI, {bytecode: BYTECODE, network: 'ropsten'});
 // Deploy it, signed by an arbitrary account.
 const tx = contract.new({key: PRIVATE_KEY});
-// Get the transaction hash.
+// Wait for the transaction hash.
 await tx.txId;
-// Get the receipt, you can also just wait on the `tx` object itself.
+// Wait for the receipt, you can also just wait on the `tx` object itself.
 await tx.receipt;
+// Wait for 3 confirmations.
+await tx.confirmed(3);
 // Make a transaction call to the newly deployed contract.
 const receipt2 = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
 // Find some transaction events.
@@ -305,10 +307,16 @@ await contract.myTransactionFn(...[args], {
 All transaction calls (including `new()`) return a Promise object that resolves
 to the
 [transaction receipt](https://web3js.readthedocs.io/en/1.0/web3-eth.html#eth-gettransactionreceipt-return),
-once the transaction has been mined. This Promise object also has the fields
-`txId` and `receipt`, which are also Promises that resolve with the transaction
- hash and the receipt, respectively. The transaction hash, which resolves when
- the transaction is posted, will typically resolve much sooner than the receipt.
+once the transaction has been mined.
+
+This Promise object also has the following properties:
+- `txId`: a promise that resolves to the transaction hash when the transaction is
+posted to the blockchain. This ususally comes much sooner than the receipt.
+- `receipt`: a promise that resolves to the transaction receipt when the
+transaction has been mined. Same as waiting on the parent object itself.
+- `confirmed(count=1)` a function that returns a promise that resolves to the
+transaction receipt after the transaction has been mined and `count` number of
+confirmations have been seen, up to a maximum of 12 confirmations.
 
 **Example**
 ```javascript
@@ -340,6 +348,8 @@ await tx.txId; // '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b
 // Wait on receipt.
 // Exactly the same as doing `await tx`.
 await tx.receipt; // {blockNumber:..., etc.}
+// Wait on 4 confirmations. Maximum of 12.
+await tx.confirmed(4); // {blockNumber:..., etc.}
 ```
 
 ### Deploying a new contract instance
