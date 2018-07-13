@@ -163,12 +163,15 @@ through the `args` option.
 
 By default, these calls will be made from the address specified by
 `web3.eth.defaultAccount` or `web3.eth.getAccounts()[0]`. You can override the
-caller by either passing the `from` or `key` option.
+caller by either passing the `from` or `key` option. Note that a private key
+is not necessary for constant calls because they are not signed transactions,
+so the `from` option is sufficient. Also, not all functions will require a
+valid caller, so it may be left undefined in those cases. One classic
+example is the ERC20 `balanceOf()` function.
 
-Functions that return multiple values will resolve to an object whose keys are
-*both* the return value name (if available) and position index.
-See [Encoding/Decoding Rules](#encodingdecoding-rules) for more information on how
-arguments and return values are encoded and decoded.
+There are rules for how function arguments and return values are encoded and
+decoded. See [Encoding/Decoding Rules](#encodingdecoding-rules) for more
+information.
 
 ```javascript
 const FlexContract = require('flex-contract');
@@ -179,29 +182,12 @@ const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 
-// Calling a function named 'getUint256' that returns a single uint256.
-// Returns a base-10 string: e.g., '12345...'
-await contract.getUint256(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getBool' that returns a bool.
-// Returns true or false
-await contract.getBool(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getBytes32' that returns a bytes32.
-// Returns a lowercase hex string: e.g., '0x1234...'
-await contract.getBytes32(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getString' that returns a string.
-// Returns a string: e.g, 'foobar...'
-await contract.getString(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getAddress' that returns an address.
-// Returns a checksum, mixed-case address: e.g., '0x5b690eb0f08DB37734E1a99e37D324c059fDA753'
-await contract.getAddress(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getUint256Array' that returns an array of uint256.
-// Returns an array of base-10 strings: e.g., ['1234', '1235', ...]
-await contract.getUint256Array(arg1, arg2, ...[moreArgs], opts);
-// Calling a function named 'getMultipleValues' that returns multiple values.
-// Returns an object whose keys are the names of each value (if available) as
-// well as the return value position index.
-// E.g., {'0': VALUE_0, 'name0': VALUE_0, '1': VALUE_1, 'name1': VALUE_1}
-await contract.getMultipleValues(arg1, arg2, ...[moreArgs], opts);
+// Calling a constant function named 'myConstantFn' that returns its return value.
+await contract.myConstantFn(arg1, arg2, ...[moreArgs], opts);
+// Calling a constant function named 'myConstantFn' from
+// the account '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9' at block 100.
+await contract.myConstantFn(arg1, arg2, ...[moreArgs],
+   {from: '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9', block: 100});
 // Full call option defaults:
 await contract.myConstantFn(...[args], {
    // Named arguments.
@@ -218,7 +204,12 @@ await contract.myConstantFn(...[args], {
    // Makes the call from the address derived from this private key.
    key: undefined,
    // Make the call against the blockchain's state at a specific block number.
-   block: undefined
+   // Can be a previously mined block number, a negative number, or the string
+   // 'latest'.
+   // If the number is negative, it represents a backwards offset from the
+   // last block mined, where -1 is the last block mined, -2 is the second to
+   // last, etc.
+   block: -1
 });
 ```
 
@@ -588,7 +579,31 @@ converted to base-10 or base-16 string (.e.g, `'1234'` or `'0x04d2'`).
 - If they are not the correct size, they will be left-padded to fit, *which
 can have unintended consequences*, so you should normalize the input yourself.
 - Bytes types are decoded as a lowercase hex string (.e.g, `'0x1337b33f...'`).
-- Address types are decoded as a *checksum* address, which is a mixed case hex string.
+- Address types are decoded as a *checksum* address, which is a mixed case hex
+string.
+
+##### Tuples (multiple return values)
+- Decoded as an object with keys for both each value's position and name
+(if available). For example:
+```javascript
+// Solidity definition:
+function myConstantFn() pure returns (uint256 a, address b, bytes32 c) {
+   return (1024,
+    0x0420DC92A955e3e139b52142f32Bd54C6D46c023,
+    0x3dffba3b7f99285cc73642eac5ac7110ec7da4b4618d99f3dc9f9954a3dacf27);
+}
+// flex-contract call
+await contract.myConstantFn();
+// Output:
+// {
+//    '0': '1024',
+//    '1': '0x0420DC92A955e3e139b52142f32Bd54C6D46c023',
+//    '2': '0x3dffba3b7f99285cc73642eac5ac7110ec7da4b4618d99f3dc9f9954a3dacf27A',
+//    'a': '1024',
+//    'b': '0x0420DC92A955e3e139b52142f32Bd54C6D46c023',
+//    'c': '0x3dffba3b7f99285cc73642eac5ac7110ec7da4b4618d99f3dc9f9954a3dacf27A'
+// }
+```
 
 ### Cloning
 You can clone an existing flex-contract instance with the `clone()` method.

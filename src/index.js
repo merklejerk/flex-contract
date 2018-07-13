@@ -355,7 +355,7 @@ async function estimateGas(inst, def, args, opts) {
 		gasBonus = opts.gasBonus;
 	else if (_.isNumber(inst.gasBonus))
 		gasBonus = inst.gasBonus;
-	const gas = await inst._web3.eth.estimateGas(_opts, _opts.block);
+	const gas = await inst._web3.eth.estimateGas(_opts);
 	return Math.ceil(gas * (1+gasBonus));
 }
 
@@ -367,8 +367,11 @@ async function callTx(inst, def, args, opts) {
 	const _opts = await createCallOpts(inst, def, args, opts);
 	if (!_opts.to && def.type != 'constructor')
 		throw Error('Contract has no address.');
+	let block = undefined;
+	if (!_.isNil(opts.block))
+		block = resolveBlockDirective(inst, _opts.block);
 	return decodeCallOutput(def,
-		await inst._web3.eth.call(_opts, _opts.block));
+		await inst._web3.eth.call(_opts, ));
 }
 
 async function sendTx(inst, def, args, opts) {
