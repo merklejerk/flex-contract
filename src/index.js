@@ -404,6 +404,20 @@ async function getFirstAccount(web3) {
 }
 
 function wrapSendTxPromise(inst, address, promise) {
+	// Resolved receipt object.
+	let receipt = undefined;
+	// Number of confirmations seen.
+	let confirmations = 0;
+	// Count confirmations.
+	promise.then(({sent}) => {
+		/*
+		sent.on('confirmation', (n, _receipt) => {
+			console.log(n);
+			receipt = _receipt;
+			confirmations = Math.max(confirmations, n);
+		});*/
+	});
+	// Create a promise that resolves with the receipt.
 	const wrapper = new Promise(async (accept, reject) => {
 		try {
 			const {sent} = await promise;
@@ -422,6 +436,7 @@ function wrapSendTxPromise(inst, address, promise) {
 		}
 	});
 	wrapper.receipt = wrapper;
+	// Create a promise that resolves with the transaction hash.
 	wrapper.txId = new Promise(async (accept, reject) => {
 		try {
 			const {sent} = await promise;
@@ -431,6 +446,27 @@ function wrapSendTxPromise(inst, address, promise) {
 			reject(err); throw err;
 		}
 	});
+	// Create a function that creates a promise that resolves after a number of
+	// confirmations.
+	wrapper.confirmed = (count) => {
+			count = count || 1;
+			// If we've already seen the confirmation, resolve immediately.
+			if (confirmations >= count) {
+				assert(receipt);
+				return Promise.resolve(receipt);
+			}
+			// Create a promise that'll get called by the confirmation handler.
+			return new Promise((accept, reject) => {
+				promise.catch(reject);
+				promise.then(sent => {
+					sent.on('error', reject);
+					sent.on('confirmation', (_count, receipt) => {
+						if (_count == count)
+							accept(receipt);
+					});
+				});
+			});
+		};
 	return wrapper;
 }
 

@@ -112,6 +112,13 @@ describe('flex-contract', function() {
 		assert.ok(await r.receipt);
 	});
 
+	it('can transact and wait for confirmation', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		const r = c.transact();
+		//assert.ok(await r.confirmation(4));
+	});
+
 	it('can transact and pay', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
