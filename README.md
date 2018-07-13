@@ -9,6 +9,7 @@ A modern Ethereum smart contract abstraction for power users that:
 - Can decode internal events (transaction events raised in other contracts).
 - Facilitates easy event filtering and monitoring.
 - Provides separate promises for transaction hashes, receipts, and confirmations.
+- Automatically calculates gas and gas price for transactions in a configurable manner.
 
 ## Installation
 ```bash
