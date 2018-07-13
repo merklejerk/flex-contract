@@ -96,7 +96,6 @@ const ABI = require('./MyContract.ABI.json');
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 
 // On mainnet, not bound to any address, Infura provider.
-// ABI can be plain or truffle artifact.
 new FlexContract(ABI);
 // Binding to a deployed address, on mainnet, Infura provider.
 new FlexContract(ABI, DEPLOYED_AT);
