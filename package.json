@@ -1,12 +1,17 @@
 {
 	"name": "flex-contract",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "A modern Ethereum smart contract abstraction for power users.",
 	"main": "src/index.js",
-	"repository": "https://github.com/cluracan/flex-contract",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cluracan/flex-contract.git"
+	},
+	"bugs": {
+		"url": "https://github.com/cluracan/flex-contract/issues"
+	},
 	"author": "Lawrence Forman <not.larry@klv.io>",
 	"license": "Apache-2.0",
-	"private": false,
 	"scripts": {
 		"test": "mocha --timeout 5000 ./test/*.js"
 	},
@@ -21,5 +26,20 @@
 		"ganache-cli": "^6.1.5",
 		"mocha": "^5.2.0",
 		"mz": "^2.7.0"
-	}
+	},
+	"keywords": [
+		"ethereum",
+		"smart contracts",
+		"smart contract",
+		"contract",
+		"erc20",
+		"web3",
+		"abstraction",
+		"library",
+		"self-signed",
+		"async",
+		"await",
+		"private key",
+		"es2017"
+	]
 }
