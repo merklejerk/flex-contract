@@ -13,7 +13,7 @@
 	"author": "Lawrence Forman <not.larry@klv.io>",
 	"license": "Apache-2.0",
 	"scripts": {
-		"test": "mocha --timeout 5000 ./test/*.js"
+		"test": "mocha --timeout 8000 ./test/*.js"
 	},
 	"dependencies": {
 		"bignumber.js": "^7.2.1",
