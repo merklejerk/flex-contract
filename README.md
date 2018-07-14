@@ -252,7 +252,7 @@ const contract = new FlexContract(ABI, DEPLOYED_AT);
 
 // Make a transaction function call and wait for the receipt.
 await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
-/* Result: {
+/* Result: <Receipt Object> {
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
    blockNumber: 3616104,
    gasUsed: 603013,
@@ -326,7 +326,7 @@ const contract = new FlexContract(ABI, DEPLOYED_AT);
 
 // Make a transaction call and wait for the receipt.
 await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
-/* Result: {
+/* Result: <Receipt Object> {
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
    blockNumber: 3616104,
    gasUsed: 603013,
@@ -335,18 +335,21 @@ await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
 }*/
 
 // Make a transaction call and wait for the transaction hash.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
+await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts).txId;
 // Result: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
+// Make a transaction call and wait for the confirmation.
+await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts).txId;
+// Result: <Receipt Object>
 
-// Make a transaction call and wait on both separately.
+// Make a transaction call, immediately getting the promise object.
 const tx = contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
 // Wait on transaction hash.
 await tx.txId; // '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
 // Wait on receipt.
 // Exactly the same as doing `await tx`.
-await tx.receipt; // {blockNumber:..., etc.}
-// Wait on 4 confirmations. Maximum of 12.
-await tx.confirmed(4); // {blockNumber:..., etc.}
+await tx.receipt; //  <Receipt Object>{blockNumber:..., etc.}
+// Wait on 4 confirmations.
+await tx.confirmed(4); // <Receipt Object> {blockNumber:..., etc.}
 ```
 
 ### Deploying a new contract instance
@@ -366,7 +369,7 @@ const contract = FlexContract(ABI, {bytecode: BYTECODE});
 // Deploy a new instance of the contract signed by default wallet and wait for
 // the receipt.
 await contract.new(arg1, arg2, ...[moreArgs], opts);
-/* Result: {
+/* Result: <Receipt Object> {
    contractAddress: '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5',
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
    blockNumber: 3616104,
