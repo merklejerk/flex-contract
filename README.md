@@ -43,9 +43,9 @@ await tx.receipt;
 await tx.confirmed(3);
 // Make a transaction call to the newly deployed contract, signed by an
 // arbitrary wallet, and wait for the receipt.
-await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
-// Find some transaction events.
-receipt2.findEvents('MyEvent');
+const receipt = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
+// Find some transaction events in the receipt.
+receipt.findEvents('MyEvent');
 
 // Define a contract interface bound to an address on the mainnet.
 contract = new FlexContract(ABI, DEPLOYED_AT);
