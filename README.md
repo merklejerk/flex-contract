@@ -5,7 +5,7 @@
 A modern Ethereum smart contract abstraction for power users that:
 
 - Requires minimal configuration to get going on all networks (no provider necessary).
-- Can sign and send transactions from arbitrary accounts.
+- Can sign and send transactions from arbitrary wallets.
 - Can decode internal events (transaction events raised in other contracts).
 - Facilitates easy event filtering and monitoring.
 - Provides separate promises for transaction hashes, receipts, and confirmations.
@@ -28,12 +28,12 @@ const ABI = require('./MyContract.ABI.json');
 const BYTECODE = require('./MyContract.bytecode.bin');
 // Previously deployed contract address.
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
-// A self-signing account for transactions.
+// A self-signing wallet for transactions.
 const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6bb5696ab';
 
 // Define a contract interface on ropsten.
 let contract = new FlexContract(ABI, {bytecode: BYTECODE, network: 'ropsten'});
-// Deploy it, signed by an arbitrary account.
+// Deploy it, signed by an arbitrary wallet.
 const tx = contract.new({key: PRIVATE_KEY});
 // Wait for the transaction hash.
 await tx.txId;
@@ -41,16 +41,17 @@ await tx.txId;
 await tx.receipt;
 // Wait for 3 confirmations.
 await tx.confirmed(3);
-// Make a transaction call to the newly deployed contract.
-const receipt2 = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
+// Make a transaction call to the newly deployed contract, signed by an
+// arbitrary wallet, and wait for the receipt.
+await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
 // Find some transaction events.
 receipt2.findEvents('MyEvent');
 
 // Define a contract interface bound to an address on the mainnet.
 contract = new FlexContract(ABI, DEPLOYED_AT);
-// Call a constant function and get the result(s).
+// Call a constant function and wait for the result(s).
 await contract.myConstantFn();
-// Find events from the last 16 blocks.
+// Find events named 'MyEvent' from the last 16 blocks.
 await contract.MyEvent({fromBlock: -16});
 // Track events as they happen.
 const watcher = contract.MyEvent.watch();
@@ -61,10 +62,12 @@ watcher.on('data', event => {
 // Define a contract interface bound to an address using an existing provider.
 contract = new FlexContract(ABI,
    {address: DEPLOYED_AT, provider: web3.currentProvider});
-// Make a transaction call signed by the provider's wallet.
+// Make a transaction call, passing an argument, signed by the provider,
+// and wait for the receipt.
 await contract.myTransactionFn('1337');
-// Make a transaction call signed by an arbitrary account.
-await contract.myTransactionFn('1337', {key: PRIVATE_KEY});
+// Make a transaction call, signed by an arbitrary wallet,
+// and wait for 3 confirmations.
+await contract.myTransactionFn('1337', {key: PRIVATE_KEY}).confirmed(3);
 ```
 
 ## User Guide
@@ -182,10 +185,11 @@ const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 
-// Calling a constant function named 'myConstantFn' that returns its return value.
+// Calling a constant function named 'myConstantFn' that resolves to  
+// its return value.
 await contract.myConstantFn(arg1, arg2, ...[moreArgs], opts);
 // Calling a constant function named 'myConstantFn' from
-// the account '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9' at block 100.
+// the wallet '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9' at block 100.
 await contract.myConstantFn(arg1, arg2, ...[moreArgs],
    {from: '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9', block: 100});
 // Full call option defaults:
@@ -220,12 +224,12 @@ Promise object (see [Transaction promises](#transaction-promises) for
 details) that resolves to the transaction receipt, once the transaction is
 mined.
 
-By default, transactions will be signed by the account associated with
+By default, transactions will be signed by the wallet associated with
 `web3.eth.defaultAccount` or `web3.eth.getAccounts()[0]`. You can override the
 caller by either passing the `from` or `key` option. The `from` option will
-let the provider sign the transaction from an unlocked account, as usual.
+let the provider sign the transaction from an unlocked wallet, as usual.
 But, the `key` option will *self-sign* the transaction with the private key
-provided, allowing you to transact from any account you have the private keys
+provided, allowing you to transact from any wallet you have the private keys
 to.
 
 Note that user initiated transactions do not return meaningful values in
@@ -256,8 +260,8 @@ await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
    ... etc.
 }
 */
-// Make a transaction function call, signed by and sent from the account
-// associated with a private key.
+// Make a transaction function call, signed by and sent from the wallet
+// defined by a private key, and wait for the receipt.
 await contract.someTransactionFn(arg1, arg2, ...[moreArgs], {
    key: PRIVATE_KEY
 });
@@ -359,7 +363,7 @@ const BYTECODE = require('./MyContract.bytecode.bin');
 // Bytecode option not necessary if ABI is a complete truffle artifact.
 const contract = FlexContract(ABI, {bytecode: BYTECODE});
 
-// Deploy a new instance of the contract signed by default account and wait for
+// Deploy a new instance of the contract signed by default wallet and wait for
 // the receipt.
 await contract.new(arg1, arg2, ...[moreArgs], opts);
 /* Result: {
