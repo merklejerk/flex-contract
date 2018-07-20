@@ -5,6 +5,7 @@ const ethjs = require('ethereumjs-util');
 const ethjstx = require('ethereumjs-tx');
 const coder = require('./coder');
 const util = require('./util');
+const ens = require('./ens');
 const BigNumber = require('bignumber.js');
 const EventEmitter = require('events');
 const assert = require('assert');
@@ -87,10 +88,19 @@ module.exports = class FlexContract {
 
 	set address(v) {
 		if (_.isString(v)) {
-			if (!ethjs.isValidAddress(v))
+			if (ethjs.isValidAddress(v)) {
+				this._address = ethjs.toChecksumAddress(v);
+				module.exports.ABI_CACHE[v] = this._abi;
+			}
+			else if (isENSAddress(v)) {
+				this._address = v;
+				// Cache the abi once the ENS resolves.
+				this.ensResolve(v).then(r =>
+					module.exports.ABI_CACHE[r] = this._abi)
+					.catch(_.noop);
+			}
+			else
 				throw new Error(`Invalid address: ${v}`);
-			this._address = ethjs.toChecksumAddress(v);
-			module.exports.ABI_CACHE[this._address] = this._abi;
 		}
 		else
 			this._address = undefined;
@@ -100,12 +110,18 @@ module.exports = class FlexContract {
 		return getCodeDigest(this, opts);
 	}
 
+	async ensResolve(name) {
+		return ens.resolve(this._web3, name);
+	}
+
 	new(..._args) {
 		const {args, opts} = parseMethodCallArgs(_args);
 		const def = findDef(this._abi, {type: 'constructor', args: args});
 		if (!def)
 			throw new Error(`Cannot find matching constructor for given arguments`);
-		const r = wrapSendTxPromise(this, null, sendTx(this, def, args, opts));
+		if (opts.gasOnly)
+			return estimateGas(this, def, args, opts);
+		const r = wrapSendTxPromise(this, sendTx(this, def, args, opts));
 		// Set address and cache the ABI on successful deploy.
 		r.receipt.then(
 			receipt => {
@@ -118,26 +134,35 @@ module.exports = class FlexContract {
 };
 module.exports.ABI_CACHE = {};
 module.exports.MAX_GAS = 6721975;
+module.exports.ens = ens;
 
 class EventWatcher extends EventEmitter {
 	constructor(opts) {
 		super();
 		this._inst = opts.inst;
-		this._filter = opts.filter;
 		this._def = opts.def;
-		this._args = opts.args;
 		this.pollRate = opts.pollRate;
 		this._timer = null;
 		this._stop = false;
 		this.stop = this.close;
-		this._init();
+		this._init(opts.address || inst._address, opts.args || {});
 	}
 
-	async _init() {
-		const web3 = this._inst.web3;
-		this._lastBlock = await web3.eth.getBlockNumber();
-		if (!this._stop)
-			this._timer = setTimeout(() => this._poll(), this.pollRate);
+	async _init(address, args) {
+		try {
+			const web3 = this._inst.web3;
+			const _args = await resolveCallArgs(this._inst, args, this._def,
+				{partial: true, indexedOnly: true});
+			this._filter = {
+				address: await resolveAddresses(this._inst, address),
+				topics: coder.encodeLogTopicsFilter(this._def, _args)
+			};
+			this._lastBlock = await web3.eth.getBlockNumber();
+			if (!this._stop)
+				this._timer = setTimeout(() => this._poll(), this.pollRate);
+		} catch (err) {
+			this.emit('error', err);
+		}
 	}
 
 	async _poll() {
@@ -178,7 +203,7 @@ async function getCodeDigest(inst, opts={}) {
 	opts = _.defaults({}, opts, {
 		address: inst._address
 	});
-	const address = opts.address || opts.to;
+	const address = await resolveAddresses(inst, opts.address || opts.to);
 	if (!address)
 		throw new Error('Cannot determine contract adress and it was not provided.');
 	const code = await inst._web3.eth.getCode(address, opts.block);
@@ -224,9 +249,11 @@ function initMethods(inst, abi) {
 					const def = findDef(_defs, {args: args});
 					if (!def)
 						throw new Error(`Cannot find matching function '${name}' for given arguments`);
+					if (opts.gasOnly)
+						return estimateGas(inst, def, args, opts);
 					if (def.constant)
 						return callTx(inst, def, args, opts);
-					return wrapSendTxPromise(inst, opts.address || opts.to,
+					return wrapSendTxPromise(inst,
 						sendTx(this, def, args, opts));
 				};
 		}
@@ -256,12 +283,12 @@ async function getPastEvents(inst, def, opts={}) {
 	});
 	if (!opts.address)
 		throw new Error('Contract does not have an address set and it was not provided.');
-	const args = arrangeCallArgs(opts.args || {}, def,
+	const args = await resolveCallArgs(inst, opts.args || {}, def,
 		{partial: true, indexedOnly: true});
 	const filter = {
 		fromBlock: await resolveBlockDirective(inst, opts.fromBlock),
 		toBlock: await resolveBlockDirective(inst, opts.toBlock),
-		address: opts.address,
+		address: await resolveAddresses(inst, opts.address),
 		topics: coder.encodeLogTopicsFilter(def, args)
 	};
 	const raw = await inst._web3.eth.getPastLogs(filter);
@@ -277,15 +304,9 @@ function watchEvents(inst, def, opts) {
 	});
 	if (!opts.address)
 		throw new Error('Contract does not have an address set and it was not provided.');
-	const args = arrangeCallArgs(opts.args || {}, def,
-		{partial: true, indexedOnly: true});
-	const filter = {
-		address: opts.address,
-		topics: coder.encodeLogTopicsFilter(def, args)
-	};
 	return new EventWatcher({
 		inst: inst,
-		filter: filter,
+		address: opts.address, // Watcher will resolve address.
 		args: opts.args,
 		pollRate: opts.pollRate,
 		def: def
@@ -318,88 +339,101 @@ async function resolveBlockDirective(inst, directive) {
 
 async function createCallOpts(inst, def, args, opts) {
 	const web3 = inst._web3;
-	const data = opts.data || createCallData(inst, def, args, opts);
-	const from = opts.from ||
+	const from = (await resolveAddresses(inst, opts.from)) ||
 		(opts.key ? util.privateKeyToAddress(opts.key) : undefined) ||
 		web3.eth.defaultAccount || await getFirstAccount(web3);
-	const chainId = opts.chainId || await inst._chainId;
-	const gasPrice = opts.gasPrice || await getGasPrice(inst, opts);
-	const gasLimit = opts.gas || opts.gasLimit ||
-		await estimateGas(inst, def, args, opts);
-	const value = opts.value || 0;
-	const to = opts.to || opts.address || inst.address;
-	const _opts = {
-		chainId: chainId,
-		gasPrice: util.toHex(gasPrice),
-		gasLimit: util.toHex(gasLimit),
-		value: util.toHex(value),
-		data: data || '0x'
+	let to = undefined;
+	if (def.type != 'constructor') {
+		to = await resolveAddresses(inst,
+			opts.to || opts.address || inst.address);
+	}
+	const data = opts.data || await createCallData(inst, def, args, opts);
+	return {
+		gasPrice: opts.gasPrice,
+		gasLimit: opts.gasLimit,
+		value: opts.value || 0,
+		data: data,
+		to: to,
+		from: from
 	};
-	if (to)
-		_opts.to = _.isString(to) ? ethjs.toChecksumAddress(to) : to;
-	if (from)
-		_opts.from = _.isString(from) ? ethjs.toChecksumAddress(from) : from;
-	return _opts;
 }
 
 async function estimateGas(inst, def, args, opts) {
-	opts = _.assign({}, opts, {
-			gasPrice: 1,
-			gasLimit: module.exports.MAX_GAS,
-		});
-	const _opts = await createCallOpts(inst, def, args, opts);
-	if (!_opts.from)
-		throw Error('Cannot determine caller.');
-	let gasBonus = 0;
-	if (_.isNumber(opts.gasBonus))
-		gasBonus = opts.gasBonus;
-	else if (_.isNumber(inst.gasBonus))
-		gasBonus = inst.gasBonus;
-	const gas = await inst._web3.eth.estimateGas(_opts);
-	return Math.ceil(gas * (1+gasBonus));
+	const callOpts = await createCallOpts(inst, def, args, opts);
+	return estimateGasRaw(inst, callOpts, opts.gasBonus)
 }
 
 async function callTx(inst, def, args, opts) {
-	opts = _.assign({}, opts, {
+	const web3 = inst._web3;
+	const callOpts = await createCallOpts(inst, def, args, opts);
+	_.assign(callOpts, {
 			gasPrice: 1,
-			gasLimit: module.exports.MAX_GAS,
+			gasLimit: module.exports.MAX_GAS
 		});
-	const _opts = await createCallOpts(inst, def, args, opts);
-	if (!_opts.to && def.type != 'constructor')
+	if (!callOpts.to && def.type != 'constructor')
 		throw Error('Contract has no address.');
 	let block = undefined;
 	if (!_.isNil(opts.block))
-		block = resolveBlockDirective(inst, _opts.block);
-	return decodeCallOutput(def,
-		await inst._web3.eth.call(_opts, ));
+		block = resolveBlockDirective(inst, callOpts.block);
+	const output = await web3.eth.call(normalizeCallOpts(callOpts), block);
+	return decodeCallOutput(def, output);
 }
 
 async function sendTx(inst, def, args, opts) {
-	opts = _.assign({}, opts, {
-			gasPrice: opts.gasPrice || await getGasPrice(inst, opts),
-			gasLimit: opts.gasLimit || await estimateGas(inst, def, args, opts),
-		});
-	const _opts = await createCallOpts(inst, def, args, opts);
-	if (!_opts.from)
+	const callOpts = await createCallOpts(inst, def, args, opts);
+	callOpts.chainId = opts.chainId || await inst._chainId;
+	if (!callOpts.from)
 		throw Error('Cannot determine caller.');
-	if (!_opts.to && def.type != 'constructor')
+	if (!callOpts.to && def.type != 'constructor')
 		throw Error('Contract has no address.');
-	if (!_.isNil(opts.nonce))
-		_opts.nonce = opts.nonce;
+	if (_.isNumber(opts.nonce))
+		callOpts.nonce = opts.nonce;
 	else
-		_opts.nonce = await inst._web3.eth.getTransactionCount(_opts.from);
+		callOpts.nonce = await inst._web3.eth.getTransactionCount(callOpts.from);
+	if (!callOpts.gasPrice)
+		callOpts.gasPrice = await getGasPrice(inst, opts.gasPriceBonus);
+	if (!callOpts.gasLimit) {
+		callOpts.gasLimit = await estimateGasRaw(inst, callOpts, opts.gasBonus);
+	}
 	let sent = null;
 	if (opts.key)  {
 		// Sign the TX ourselves.
-		const tx = new ethjstx(_opts);
+		const tx = new ethjstx(normalizeCallOpts(callOpts));
 		tx.sign(ethjs.toBuffer(opts.key));
 		const serialized = util.toHex(tx.serialize());
 		sent = inst._web3.eth.sendSignedTransaction(serialized);
 	} else {
 		// Let the provider sign it.
-		sent = inst._web3.eth.sendTransaction(_opts);
+		sent = inst._web3.eth.sendTransaction(normalizeCallOpts(callOpts));
 	}
-	return {sent: sent};
+	return {sent: sent, address: callOpts.to};
+}
+
+function normalizeCallOpts(opts) {
+	opts = _.cloneDeep(opts);
+	opts.gasPrice = util.toHex(opts.gasPrice || 0);
+	opts.gasLimit = util.toHex(opts.gasLimit || 0);
+	opts.value = util.toHex(opts.value || 0);
+	if (opts.data && opts.data != '0x')
+		opts.data = util.toHex(opts.data);
+	else
+		opts.data = '0x';
+	if (opts.to)
+		opts.to = ethjs.toChecksumAddress(opts.to);
+	if (opts.from)
+		opts.from = ethjs.toChecksumAddress(opts.from);
+	return opts;
+}
+
+async function estimateGasRaw(inst, callOpts, bonus) {
+	callOpts = _.assign({}, callOpts, {
+			gasPrice: 1,
+			gasLimit: module.exports.MAX_GAS,
+		});
+	bonus = (_.isNumber(bonus) ? bonus : inst.bonus) || 0;
+	const gas = await inst._web3.eth.estimateGas(
+		normalizeCallOpts(callOpts));
+	return Math.ceil(gas * (1+bonus));
 }
 
 async function getFirstAccount(web3) {
@@ -408,7 +442,7 @@ async function getFirstAccount(web3) {
 		return accts[0];
 }
 
-function wrapSendTxPromise(inst, address, promise) {
+function wrapSendTxPromise(inst, promise) {
 	// Resolved receipt object.
 	let receipt = undefined;
 	// Number of confirmations seen.
@@ -427,7 +461,7 @@ function wrapSendTxPromise(inst, address, promise) {
 	// Create a promise that resolves with the receipt.
 	const wrapper = new Promise(async (accept, reject) => {
 		promise.catch(reject);
-		promise.then(({sent}) => {
+		promise.then(({sent, address}) => {
 			sent.on('error', reject);
 			sent.on('receipt', r=> {
 				if (!r.status)
@@ -484,8 +518,8 @@ function decodeCallOutput(def, encoded) {
 }
 
 function augmentReceipt(inst, address, receipt) {
-	address = address || receipt.contractAddress || inst._address;
-	address = ethjs.toChecksumAddress(address);
+	address = ethjs.toChecksumAddress(
+		address || receipt.contractAddress || receipt.to);
 	// Parse logs into events.
 	const groups = _.groupBy(receipt.logs, 'address');
 	const events = [];
@@ -541,20 +575,15 @@ function findEvents(name, args, events) {
 	return found;
 }
 
-async function getGasPrice(inst, opts) {
+async function getGasPrice(inst, bonus) {
 	const web3 = inst._web3;
-	let gasPriceBonus = 0;
-	if (_.isNumber(opts.gasPriceBonus))
-		gasPriceBonus = opts.gasPriceBonus;
-	if (_.isNumber(inst.gasPriceBonus))
-		gasPriceBonus = inst.gasPriceBonus
+	bonus = (_.isNumber(bonus) ? bonus : inst.gasPriceBonus) || 0;
 	return new BigNumber(await web3.eth.getGasPrice())
-		.times(1+(gasPriceBonus)).toString(10);
+		.times(1+bonus).toString(10);
 }
 
-function createCallData(inst, def, args, opts) {
-	const contract = inst._contract;
-	const _args = arrangeCallArgs(args, def);
+async function createCallData(inst, def, args, opts) {
+	const _args = await resolveCallArgs(inst, args, def);
 	if (def.type == 'constructor') {
 		const bytecode = opts.bytecode || inst.bytecode;
 		if (!bytecode)
@@ -566,24 +595,33 @@ function createCallData(inst, def, args, opts) {
 	return inst._contract.methods[def.name](..._args).encodeABI();
 }
 
-function arrangeCallArgs(args, def, opts={}) {
+async function resolveCallArgs(inst, args, def, opts={}) {
 	const inputs = def.inputs;
 	if (!opts.partial)
 		assert.equal(_.uniq(_.keys(args)).length, inputs.length);
 	let r = [];
 	if (_.isArray(args)) {
 		for (let i = 0; i < inputs.length; i++) {
-			if (opts.indexedOnly && !inputs[i].indexed)
+			const input = inputs[i];
+			if (opts.indexedOnly && !input.indexed)
 				continue;
-			r.push(args[i]);
+			if (/^address/.test(input.type))
+				r.push(await resolveAddresses(inst, args[i]));
+			else
+				r.push(args[i]);
 		}
 	} else if (_.isPlainObject(args)) {
 		for (let i = 0; i < inputs.length; i++) {
-			if (opts.indexedOnly && !inputs[i].indexed)
+			const input = inputs[i];
+			if (opts.indexedOnly && !input.indexed)
 				continue;
-			const name = inputs[i].name;
-			if (name in args)
-				r.push(args[name]);
+			const name = input.name;
+			if (name in args) {
+				if (/^address/.test(input.type))
+					r.push(await resolveAddresses(inst, args[name]));
+				else
+					r.push(args[name]);
+			}
 			else
 				r.push(null);
 		}
@@ -591,6 +629,18 @@ function arrangeCallArgs(args, def, opts={}) {
 	if (opts.partial)
 		r = [...r, ..._.times(inputs.length - r.length, () => null)];
 	return r;
+}
+
+async function resolveAddresses(inst, v) {
+	if (_.isArray(v))
+		return await Promise.all(_.map(v, _v => resolveAddresses(inst, _v)));
+	if (_.isString(v) && isENSAddress(v))
+		return await inst.ensResolve(v);
+	return v;
+}
+
+function isENSAddress(v) {
+	return _.isString(v) && /[^.]+\.[^.]+$/.test(v);
 }
 
 function parseMethodCallArgs(args) {

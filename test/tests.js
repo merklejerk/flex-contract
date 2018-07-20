@@ -103,6 +103,20 @@ describe('flex-contract', function() {
 		assert.equal(r['r2'], args[2]);
 	});
 
+	it('can get gas estimate for deployment', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		const r = await c.new({gasOnly: true});
+		assert.ok(_.isNumber(r));
+	});
+
+	it('can get gas estimate for transaction', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new();
+		const r = await c.transact({gasOnly: true});
+		assert.ok(_.isNumber(r));
+	});
+
 	it('can transact', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();

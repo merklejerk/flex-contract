@@ -10,6 +10,7 @@ A modern Ethereum smart contract abstraction for power users that:
 - Facilitates easy event filtering and monitoring.
 - Provides separate promises for transaction hashes, receipts, and confirmations.
 - Automatically calculates gas and gas price for transactions in a configurable manner.
+- Automatically resolves ENS addresses across all inputs.
 
 ## Installation
 ```bash
@@ -26,7 +27,7 @@ const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 // Should be the hex-encoded binary output of solc/truffle.
 const BYTECODE = require('./MyContract.bytecode.bin');
-// Previously deployed contract address.
+// Previously deployed contract address. Can also be an ENS address.
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 // A self-signing wallet for transactions.
 const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6bb5696ab';
@@ -80,6 +81,7 @@ await contract.myTransactionFn('1337', {key: PRIVATE_KEY}).confirmed(3);
 - [Past events](#past-events)
 - [Live events](#live-events)
 - [Encoding/Decoding Rules](#encodingdecoding-rules)
+- [ENS addresses](#ens-addresses)
 - [Cloning](#cloning)
 - [Instance Properties](#instance-properties)
 
@@ -103,6 +105,8 @@ const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 new FlexContract(ABI);
 // Binding to a deployed address, on mainnet, Infura provider.
 new FlexContract(ABI, DEPLOYED_AT);
+// Binding to a deployed address, resolved by ENS, on mainnet, Infura provider.
+new FlexContract(ABI, 'myensaddress.eth');
 // On a different network, Infura provider.
 new FlexContract(ABI, {
       address: DEPLOYED_AT,
@@ -296,7 +300,10 @@ await contract.myTransactionFn(...[args], {
    // Bonus to apply to gas limit calculations.
    // Should be a positive or negative Number, where 0.01 = +1%.
    // If omitted, `contract.gasBonus` will be used.
-   gasBonus: undefined
+   gasBonus: undefined,
+	// If set to true, this call will ONLY estimate the gas used and resolve
+	// to a Number, which is the total gas used (with bonuses).
+	gasOnly: false
 })
 ```
 
@@ -410,7 +417,10 @@ await contract.new(...[args], {
    // Bonus to apply to gas limit calculations.
    // Should be a positive or negative Number, where 0.01 = +1%.
    // If omitted, `contract.gasBonus` will be used.
-   gasBonus: undefined
+   gasBonus: undefined,
+	// If set to true, this call will ONLY estimate the gas used and resolve
+	// to a Number, which is the total gas used (with bonuses).
+	gasOnly: false
 })
 ```
 
@@ -465,7 +475,7 @@ receipt.findEvent('MyEvent', {argName0: argValue0, ...});
 // Returns a list.
 receipt.findEvents('MyEvent', {argName0: argValue0, ...});
 
-````
+```
 
 ##### Decoding internal events
 Internal events are events that are raised in other contracts during a
@@ -582,10 +592,11 @@ converted to base-10 or base-16 string (.e.g, `'1234'` or `'0x04d2'`).
 - Decoded as a base-10 string. (.e.g., `'1234'`).
 
 ##### Bytes and Address Types
-- Should be passed in as a hex string (.e.g, `'0x1337b33f...'`).
+- Bytes be passed in as a hex string (e.g., `'0x1337b33f...'`).
+- Addresses can be either a hex string or an ENS address (e.g., `'ethereum.eth'`).
 - If they are not the correct size, they will be left-padded to fit, *which
 can have unintended consequences*, so you should normalize the input yourself.
-- Bytes types are decoded as a lowercase hex string (.e.g, `'0x1337b33f...'`).
+- Bytes types are decoded as a lowercase hex string (e.g., `'0x1337b33f...'`).
 - Address types are decoded as a *checksum* address, which is a mixed case hex
 string.
 
@@ -611,6 +622,27 @@ await contract.myConstantFn();
 //    'c': '0x3dffba3b7f99285cc73642eac5ac7110ec7da4b4618d99f3dc9f9954a3dacf27A'
 // }
 ```
+
+### ENS addresses
+Anywhere you can pass an address, you can instead pass an
+[ENS address](http://docs.ens.domains/en/latest/introduction.html), such as
+`'thisismyensaddress.eth'`. If an ENS address cannot be resolved, an
+exception will be raised. For event watchers, it will be emitted
+in an `'error'` event.  
+
+ENS is only available on the main, ropsten, and rinkeby networks.
+The ENS address will also have to be set up with the ENS contract on the
+respective network to properly resolve.
+
+##### The ENS cache
+Once an address is resolved, the address will be cached for future calls.
+Each address has a TTL, or time-to-live, defined, which specifies how long    
+the cache should be retained. However, many ENS registrations unintentionally
+leave the TTL at the default of `0`, which would imply no caching.
+So, by default, cache TTLs are clamped to be at least one hour. You can
+configure this behavior yourself by setting the
+`FlexContract.ens.minTTL` property to the minimum number of *milliseconds* to
+keep a cache entry.
 
 ### Cloning
 You can clone an existing flex-contract instance with the `clone()` method.
@@ -653,9 +685,10 @@ const cloned = conract.clone({
 A contract instance exposes a few properties, most of which you are free to
 change. Many of these can also be overridden in individual call options.
 
-- `address (String)` Address the contract is deployed to.
+- `address (String)` Address the contract is deployed to (may be ENS).
 - `gasBonus (Number)` Gas limit estimate bonus for transactions, where `0.01 = +1%`. May be negative.
 - `gasPriceBonus (Number)` Gas price bonus for transactions, where `0.01 = +1%`. May be negative.
 - `bytecode` Bytecode of the contract, used for deployment with `new()`.
 - `web3 (Web3)` Web3 instance used.
 - `abi` (Read-only) The ABI defining the contract.
+- `ensResolve(name: String): String` Resolve an ENS address to a real address.
