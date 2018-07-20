@@ -636,7 +636,7 @@ respective network to properly resolve.
 
 ##### The ENS cache
 Once an address is resolved, the address will be cached for future calls.
-Each address has a TTL, or time-to-live, defined, which specifies how long    
+Each address has a TTL, or time-to-live, defined, which specifies how long
 the cache should be retained. However, many ENS registrations unintentionally
 leave the TTL at the default of `0`, which would imply no caching.
 So, by default, cache TTLs are clamped to be at least one hour. You can
