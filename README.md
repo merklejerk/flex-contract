@@ -301,9 +301,9 @@ await contract.myTransactionFn(...[args], {
    // Should be a positive or negative Number, where 0.01 = +1%.
    // If omitted, `contract.gasBonus` will be used.
    gasBonus: undefined,
-	// If set to true, this call will ONLY estimate the gas used and resolve
-	// to a Number, which is the total gas used (with bonuses).
-	gasOnly: false
+   // If set to true, this call will ONLY estimate the gas used and resolve
+   // to a Number, which is the total gas used (with bonuses).
+   gasOnly: false
 })
 ```
 
@@ -418,9 +418,9 @@ await contract.new(...[args], {
    // Should be a positive or negative Number, where 0.01 = +1%.
    // If omitted, `contract.gasBonus` will be used.
    gasBonus: undefined,
-	// If set to true, this call will ONLY estimate the gas used and resolve
-	// to a Number, which is the total gas used (with bonuses).
-	gasOnly: false
+   // If set to true, this call will ONLY estimate the gas used and resolve
+   // to a Number, which is the total gas used (with bonuses).
+   gasOnly: false
 })
 ```
 
