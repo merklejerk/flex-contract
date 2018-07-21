@@ -95,7 +95,7 @@ module.exports = class FlexContract {
 			else if (isENSAddress(v)) {
 				this._address = v;
 				// Cache the abi once the ENS resolves.
-				this.ensResolve(v).then(r =>
+				ens.resolve(this._web3, v).then(r =>
 					module.exports.ABI_CACHE[r] = this._abi)
 					.catch(_.noop);
 			}
@@ -108,10 +108,6 @@ module.exports = class FlexContract {
 
 	async getCodeDigest(opts={}) {
 		return getCodeDigest(this, opts);
-	}
-
-	async ensResolve(name) {
-		return ens.resolve(this._web3, name);
 	}
 
 	new(..._args) {
@@ -635,7 +631,7 @@ async function resolveAddresses(inst, v) {
 	if (_.isArray(v))
 		return await Promise.all(_.map(v, _v => resolveAddresses(inst, _v)));
 	if (_.isString(v) && isENSAddress(v))
-		return await inst.ensResolve(v);
+		return await ens.resolve(inst._web3, v);
 	return v;
 }
 

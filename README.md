@@ -2,7 +2,7 @@
 ![npm package](https://badge.fury.io/js/flex-contract.svg)
 
 # flex-contract
-A modern Ethereum smart contract abstraction for power users that:
+A modern, flexible Ethereum smart contract abstraction that:
 
 - Requires minimal configuration to get going on all networks (no provider necessary).
 - Can sign and send transactions from arbitrary wallets.
@@ -286,6 +286,9 @@ await contract.myTransactionFn(...[args], {
    // Signs the transaction with this private key and sends it from the address
    // associated with it. Overrides 'from' option.
    key: undefined,
+   // Amount of ether to attach to this transaction, in wei.
+   // Can be a base-10 or hex-encoded string.
+   value: undefined,
    // Gas price to use, as a hex or base-10 string, in wei.
    // If not specified, calculated from network gas price and bonus.
    gasPrice: undefined,
@@ -403,6 +406,9 @@ await contract.new(...[args], {
    // Signs the transaction with this private key and sends it from the address
    // associated with it. Overrides 'from' option.
    key: undefined,
+   // Amount of ether to attach to this transaction, in wei.
+   // Can be a base-10 or hex-encoded string.
+   value: undefined,
    // Gas price to use, as a hex or base-10 string, in wei.
    // If not specified, calculated from network gas price and bonus.
    gasPrice: undefined,
@@ -691,4 +697,3 @@ change. Many of these can also be overridden in individual call options.
 - `bytecode` Bytecode of the contract, used for deployment with `new()`.
 - `web3 (Web3)` Web3 instance used.
 - `abi` (Read-only) The ABI defining the contract.
-- `ensResolve(name: String): String` Resolve an ENS address to a real address.
