@@ -5,7 +5,7 @@
 A modern, flexible Ethereum smart contract abstraction that:
 
 - Requires minimal configuration to get going on all networks (no provider necessary).
-- Can sign and send transactions from arbitrary wallets.
+- Can sign and send transactions from arbitrary wallets (private keys).
 - Can decode internal events (transaction events raised in other contracts).
 - Facilitates easy event filtering and monitoring.
 - Provides separate promises for transaction hashes, receipts, and confirmations.
@@ -21,7 +21,7 @@ yarn install flex-contract
 
 ## Preview
 
-```javascript
+```js
 const FlexContract = require('flex-contract');
 // May be a plain ABI or a truffle artifact.
 const ABI = require('./MyContract.ABI.json');
@@ -29,46 +29,33 @@ const ABI = require('./MyContract.ABI.json');
 const BYTECODE = require('./MyContract.bytecode.bin');
 // Previously deployed contract address. Can also be an ENS address.
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
-// A self-signing wallet for transactions.
+// A self-signing wallet key for transactions.
 const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6bb5696ab';
 
-// Define a contract interface on ropsten.
-let contract = new FlexContract(ABI, {bytecode: BYTECODE, network: 'ropsten'});
-// Deploy it, signed by an arbitrary wallet.
-const tx = contract.new({key: PRIVATE_KEY});
+// Define a contract interface on the mainnet.
+let contract = new FlexContract(ABI);
+// Deploy it, signed by an private key.
+const tx = contract.new({key: PRIVATE_KEY, bytecode: BYTECODE});
 // Wait for the transaction hash.
 await tx.txId;
 // Wait for the receipt, you can also just wait on the `tx` object itself.
 await tx.receipt;
-// Wait for 3 confirmations.
+// Wait for the receipt after 3 confirmations.
 await tx.confirmed(3);
-// Make a transaction call to the newly deployed contract, signed by an
-// arbitrary wallet, and wait for the receipt.
-const receipt = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
-// Find some transaction events in the receipt.
-receipt.findEvents('MyEvent');
-
-// Define a contract interface bound to an address on the mainnet.
-contract = new FlexContract(ABI, DEPLOYED_AT);
 // Call a constant function and wait for the result(s).
 await contract.myConstantFn();
-// Find events named 'MyEvent' from the last 16 blocks.
-await contract.MyEvent({fromBlock: -16});
+// Make a transaction call to the contract, signed by an
+// private key, and wait for the receipt.
+let receipt = await contract.myTransactionFn('1234', {key: PRIVATE_KEY});
+// Find some transaction events in the receipt.
+let events = receipt.findEvents('MyEvent');
+// Find all contract events named 'MyEvent' from the last 16 blocks.
+events = await contract.MyEvent({fromBlock: -16});
 // Track events as they happen.
 const watcher = contract.MyEvent.watch();
 watcher.on('data', event => {
       // Handle event.
    });
-
-// Define a contract interface bound to an address using an existing provider.
-contract = new FlexContract(ABI,
-   {address: DEPLOYED_AT, provider: web3.currentProvider});
-// Make a transaction call, passing an argument, signed by the provider,
-// and wait for the receipt.
-await contract.myTransactionFn('1337');
-// Make a transaction call, signed by an arbitrary wallet,
-// and wait for 3 confirmations.
-await contract.myTransactionFn('1337', {key: PRIVATE_KEY}).confirmed(3);
 ```
 
 ## User Guide
@@ -94,72 +81,50 @@ By default, the instance will create an [Infura](https://infura.io) provider to
 talk to the main network. You can modify this behavior with the options
 `network`, `infuraKey`, `web3`, `provider`, or `providerURI`.
 
-```javascript
-const FlexContract = require('flex-contract');
-// May be a plain ABI or a truffle artifact.
-const ABI = require('./MyContract.ABI.json');
-// Previously deployed contract address.
-const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
+Some options can be overridden in method calls.
 
-// On mainnet, not bound to any address, Infura provider.
-new FlexContract(ABI);
-// Binding to a deployed address, on mainnet, Infura provider.
-new FlexContract(ABI, DEPLOYED_AT);
-// Binding to a deployed address, resolved by ENS, on mainnet, Infura provider.
-new FlexContract(ABI, 'myensaddress.eth');
-// On a different network, Infura provider.
-new FlexContract(ABI, {
-      address: DEPLOYED_AT,
-      network: 'ropsten' // Or 'rinkeby', 'kovan', 'main'.
+```js
+contract = new FlexContract(
+   // Contract ABI object. May also be a truffle artifact.
+   ABI: Object | Array,
+   // Deployed address of contract. May be an ENS address (e.g., 'ethereum.eth').
+   // May omitted.
+   address: String,
+   // Options object. May be omitted.
+   {
+      // Network to use with Infura provider.
+      // May be 'main', 'ropsten', 'rinkeby', or 'kovan'.
+      // Defaults to 'main'
+      network: String,
+      // Infura API Key to use.
+      // One will be generated if not defined.
+      infuraKey: String,
+      // Connect to an existing provider at a URI
+      // (e.g., http://localhost:8545 or https://mainnet.infura.io/YOURAPIKEY).
+      // The 'net' option is required is using an IPC path.
+      providerURI: String,
+      // net instance, from require('net'), if using IPC path in providerURI
+      net: Object,
+      // Use a custom provider instance (e.g., web3.currentProvider for metamask).
+      // Overrides all provider options.
+      provider: Object,
+      // Use a custom web3 instance Overrides all provider options.
+      web3: Object,
+      // Hex-encoded string output of solc --bin.
+      // If the ABI passed as the first argument is a truffle artifact,
+      // the bytecode will already be defined.
+      bytecode: String,
+      // Fractional bonus to apply to gas price when making transactions.
+      // 0.01 = +1%. May be negative to under-price.
+      // Defaults to -0.005.
+      // Can be overridden in method calls.
+      gasPriceBonus: Number,
+      // Fractional bonus to apply to gas limit estimates when making transactions.
+      // 0.01 = +1%. May be negative, but probably not a good idea.
+      // Defaults to 0.33.
+      // Can be overridden in method calls.
+      gasBonus: Number
    });
-// Using your own Infura API key.
-new FlexContract(ABI, {
-      address: DEPLOYED_AT,
-      infuraKey: 'MyInfuraKey'
-   });
-// Custom provider URI (http://, https://, ws:// or IPC path).
-new FlexContract(ABI, {
-      address: DEPLOYED_AT,
-      providerURI: 'http://localhost:8545'
-   });
-// Using an existing provider (e.g., Metamask).
-new FlexContract(ABI, {
-      address: DEPLOYED_AT,
-      provider: web3.currentProvider
-   });
-// Using an existing web3 instance.
-// Lightest option, if you're creating lots of instances.
-new FlexContract(ABI, {
-      address: DEPLOYED_AT,
-      web3: new Web3(web3.currentProvider)
-   });
-// Full option defaults. None are required.
-new FlexContract(ABI, {
-   // Deployed address of contract. Can be overridden in calls.
-   address: undefined,
-   // Network to use with Infura provider.
-   network: 'main',
-   // Infura API Key. Good idea to provide your own.
-   infuraKey: undefined,
-   // Full provider URI
-   // (e.g., http://localhost:8545 or https://mainnet.infura.io/YOURAPIKEY).
-   // If using IPC, pass an extra 'net' option which is just require('net').
-   providerURI: undefined,
-   // Provider instance (.e.g, web3.currentProvider for embedded web3).
-   provider: undefined,
-   // Web3 instance.
-   web3: undefined,
-   // Hex-encoded string output of solc --bin.
-   // If the ABI passed as the first argument is a truffle artifact,
-   // the bytecode will already be defined.
-   bytecode: undefined,
-   // Fractional bonus to apply to gas price when making transactions.
-   // 0.01 = +1%. May be negative to under-price.
-   gasPriceBonus: -0.005,
-   // Fractional bonus to apply to gas limit estimates when making transactions.
-   // 0.01 = +1%. May be negative, but probably not a good idea.
-   gasBonus: 0.33
-});
 ```
 
 ### Making read-only (constant) calls
@@ -180,45 +145,58 @@ There are rules for how function arguments and return values are encoded and
 decoded. See [Encoding/Decoding Rules](#encodingdecoding-rules) for more
 information.
 
-```javascript
+
+##### Examples
+```js
 const FlexContract = require('flex-contract');
 // May be a plain ABI or a truffle artifact.
 const ABI = require('./MyContract.ABI.json');
 // Previously deployed contract address.
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
-
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 
-// Calling a constant function named 'myConstantFn' that resolves to  
-// its return value.
-await contract.myConstantFn(arg1, arg2, ...[moreArgs], opts);
-// Calling a constant function named 'myConstantFn' from
+// Calling a constant function named 'myConstantFn' with 2 positional arguments
+// that resolves to its return value(s).
+let result = await contract.myConstantFn(arg1, arg2, opts);
+// Calling a constant function named 'myConstantFn' with named arguments from
 // the wallet '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9' at block 100.
-await contract.myConstantFn(arg1, arg2, ...[moreArgs],
-   {from: '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9', block: 100});
-// Full call option defaults:
-await contract.myConstantFn(...[args], {
-   // Named arguments.
-   // Do not pass positional arguments if used.
-   // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
-   args: undefined,
-   // Address of caller.
-   // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0]
-   from: undefined,
-   // Address of contract.
-   // Defaults to contract.address.
-   address: undefined,
-   // Hex-encoded private key.
-   // Makes the call from the address derived from this private key.
-   key: undefined,
-   // Make the call against the blockchain's state at a specific block number.
-   // Can be a previously mined block number, a negative number, or the string
-   // 'latest'.
-   // If the number is negative, it represents a backwards offset from the
-   // last block mined, where -1 is the last block mined, -2 is the second to
-   // last, etc.
-   block: -1
-});
+result = await contract.myConstantFn({
+   args: {arg1Name: arg1, arg2Name: arg2},
+   from: '0x520dffED1dc6e3E871d944bb473C3D483F5F3fB9',
+   block: 100});
+```
+
+##### Full options
+```js
+// Full call option defaults for contract function named 'myConstantFn':
+result = await contract.myConstantFn(
+   // Positionl argument values.
+   ...[args],
+   // Options. may be omitted.
+   {
+      // Named arguments.
+      // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
+      // Do not pass positional arguments if used.
+      args: Object,
+      // Address of caller. May be an ENS address.
+      // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0]
+      from: String,
+      // Hex-encoded private key.
+      // Makes the call from the address derived from this private key.
+      // Overrides the `from` option.
+      key: String,
+      // Address of contract. May be an ENS address.
+      // Defaults to contract.address.
+      address: String,
+      // Make the call against the blockchain's state at a specific block number.
+      // Can be a previously mined block number, a negative number, or the string
+      // 'latest'.
+      // If the number is negative, it represents a backwards offset from the
+      // last block mined, where -1 is the last block mined, -2 is the second to
+      // last, etc.
+      // Defaults to -1.
+      block: Number
+   });
 ```
 
 ### Making transactions
@@ -244,18 +222,19 @@ transaction (see [Receipt Events](#receipt-events)).
 See [Encoding/Decoding Rules](#encodingdecoding-rules) for more information on
 how arguments and event logs are encoded and decoded.
 
-```javascript
+##### Examples
+```js
 const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 // Previously deployed contract address.
 const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 // Hex-encoded private key for 0xcd3Fd5ecEAAbC3664D328d956Aaa40FBF76736A3
 const PRIVATE_KEY = '0xb3734ec890893585330c71ece72afb05058192b6be47bee2b99714e6bb5696ab';
-
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 
-// Make a transaction function call and wait for the receipt.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
+// Make a transaction function call, passing two position arguments and
+// wait for the receipt.
+let receipt = await contract.someTransactionFn(arg1, arg2, opts);
 /* Result: <Receipt Object> {
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
    blockNumber: 3616104,
@@ -264,50 +243,59 @@ await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
    ... etc.
 }
 */
-// Make a transaction function call, signed by and sent from the wallet
-// defined by a private key, and wait for the receipt.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], {
+// Make a transaction function call, passing two named arguments,
+// signed by and sent from the wallet defined by a private key,
+// and wait for the receipt.
+receipt = await contract.someTransactionFn({
+   args:{arg1Name: arg1, arg2Name: arg2},
    key: PRIVATE_KEY
 });
-// Full transaction option defaults:
-await contract.myTransactionFn(...[args], {
-   // Named arguments.
-   // Do not pass positional arguments if used.
-   // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
-   args: undefined,
-   // Address of caller that will sign the transaction.
-   // Must be unlocked by the provider.
-   // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0].
-   from: undefined,
-   // Address of contract.
-   // Defaults to contract.address.
-   address: undefined,
-   // Hex-encoded string private key.
-   // Signs the transaction with this private key and sends it from the address
-   // associated with it. Overrides 'from' option.
-   key: undefined,
-   // Amount of ether to attach to this transaction, in wei.
-   // Can be a base-10 or hex-encoded string.
-   value: undefined,
-   // Gas price to use, as a hex or base-10 string, in wei.
-   // If not specified, calculated from network gas price and bonus.
-   gasPrice: undefined,
-   // Execution gas limit.
-   // Should be a Number.
-   // If not specified, calculated via `web3.eth.estimateGas()` and bonus.
-   gas: undefined,
-   // Bonus to apply to gas price calculations.
-   // Should be a positive or negative Number, where 0.01 = +1%.
-   // If omitted, `contract.gasPriceBonus` will be used.
-   gasPriceBonus: undefined,
-   // Bonus to apply to gas limit calculations.
-   // Should be a positive or negative Number, where 0.01 = +1%.
-   // If omitted, `contract.gasBonus` will be used.
-   gasBonus: undefined,
-   // If set to true, this call will ONLY estimate the gas used and resolve
-   // to a Number, which is the total gas used (with bonuses).
-   gasOnly: false
-})
+```
+
+##### Full options
+```js
+// Full transaction option defaults for contract function named 'myTransactionFn':
+tx = await contract.myTransactionFn(
+   // Positional argument values.
+   ...[args],
+   // Options. may be omitted.
+   {
+      // Named arguments.
+      // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
+      // Do not pass positional arguments if used.
+      args: Object,
+      // Address of caller that will sign the transaction.
+      // Must be unlocked by the provider.
+      // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0].
+      from: String,
+      // Hex-encoded private key.
+      // Signs the transaction with this private key and sends it from the address
+      // associated with it. Overrides `from` option.
+      key: String,
+      // Address of contract. May be an ENS address.
+      // Defaults to contract.address.
+      address: String,
+      // Amount of ether to attach to this transaction, in wei.
+      // Can be a base-10 or hex-encoded string.
+      value: String,
+      // Gas price to use, as a hex or base-10 string, in wei.
+      // If not specified, it will be calculated from network gas price with bonus.
+      gasPrice: String,
+      // Execution gas limit.
+      // If not specified, will be estimated with bonus.
+      gas: Number,
+      // Bonus to apply to gas price calculations.
+      // Should be a positive or negative Number, where 0.01 = +1%.
+      // If omitted, `contract.gasPriceBonus` will be used.
+      gasPriceBonus: Number,
+      // Bonus to apply to gas limit calculations.
+      // Should be a positive or negative Number, where 0.01 = +1%.
+      // If omitted, `contract.gasBonus` will be used.
+      gasBonus: Number,
+      // If set to true, this call will ONLY estimate the gas used and resolve
+      // to a Number, which is the total gas used (with bonuses).
+      gasOnly: Boolean
+   });
 ```
 
 ### Transaction promises
@@ -325,8 +313,8 @@ transaction has been mined. Same as waiting on the parent object itself.
 transaction receipt after the transaction has been mined and `count` number of
 confirmations have been seen, up to a maximum of 12 confirmations.
 
-**Example**
-```javascript
+##### Example
+```js
 const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 // Previously deployed contract address.
@@ -335,7 +323,7 @@ const DEPLOYED_AT = '0xf6fb5b73987d6d9a139e23bab97be6fc89e0dcd1';
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 
 // Make a transaction call and wait for the receipt.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
+await contract.someTransactionFn(arg1, arg2, opts);
 /* Result: <Receipt Object> {
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
    blockNumber: 3616104,
@@ -345,14 +333,14 @@ await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
 }*/
 
 // Make a transaction call and wait for the transaction hash.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts).txId;
+await contract.someTransactionFn(arg1, arg2, opts).txId;
 // Result: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
 // Make a transaction call and wait for the confirmation.
-await contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts).txId;
+await contract.someTransactionFn(arg1, arg2, opts).txId;
 // Result: <Receipt Object>
 
 // Make a transaction call, immediately getting the promise object.
-const tx = contract.someTransactionFn(arg1, arg2, ...[moreArgs], opts);
+const tx = contract.someTransactionFn(arg1, arg2, opts);
 // Wait on transaction hash.
 await tx.txId; // '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3'
 // Wait on receipt.
@@ -366,19 +354,20 @@ await tx.confirmed(4); // <Receipt Object> {blockNumber:..., etc.}
 A contract can be deployed via `new()`, which operates similar to a normal
 transaction function call.
 
-```javascript
+##### Example
+```js
 const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 // Should be the hex-encoded binary output of solc/truffle.
 const BYTECODE = require('./MyContract.bytecode.bin');
 
 // Create a contract with bytecode data.
-// Bytecode option not necessary if ABI is a complete truffle artifact.
-const contract = FlexContract(ABI, {bytecode: BYTECODE});
+const contract = FlexContract(ABI);
 
-// Deploy a new instance of the contract signed by default wallet and wait for
-// the receipt.
-await contract.new(arg1, arg2, ...[moreArgs], opts);
+// Deploy a new instance of the contract, passing two positional arguments
+// to the constructor, signed by default wallet and wait for the receipt.
+// Bytecode option not necessary if ABI was a truffle artifact.
+const receipt = await contract.new(arg1, arg2, {bytecode: BYTECODE});
 /* Result: <Receipt Object> {
    contractAddress: '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5',
    transactionHash: '0x9eb3f89f8581e6c6df294344b538d44e265c226ae6e8ce6210df497cf2b54bd3',
@@ -389,45 +378,54 @@ await contract.new(arg1, arg2, ...[moreArgs], opts);
 */
 // contract.address is now set to the deployed address.
 contract.address; // '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5'
+// receipt also has deployed contract address.
+receipt.address; // '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5'
+```
+
+##### Full options
+```js
 // Full deployment option defaults:
-await contract.new(...[args], {
-   // Bytecode to deploy, as a hex string.
-   // If not provided, contract.bytecode will be used.
-   bytecode: String,
-   // Named arguments.
-   // Do not pass positional arguments if used.
-   // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
-   args: undefined,
-   // Address of caller that will sign the transaction.
-   // Must be unlocked by the provider.
-   // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0].
-   from: undefined,
-   // Hex-encoded string private key.
-   // Signs the transaction with this private key and sends it from the address
-   // associated with it. Overrides 'from' option.
-   key: undefined,
-   // Amount of ether to attach to this transaction, in wei.
-   // Can be a base-10 or hex-encoded string.
-   value: undefined,
-   // Gas price to use, as a hex or base-10 string, in wei.
-   // If not specified, calculated from network gas price and bonus.
-   gasPrice: undefined,
-   // Execution gas limit.
-   // Should be a Number.
-   // If not specified, calculated via `web3.eth.estimateGas()` and bonus.
-   gas: undefined,
-   // Bonus to apply to gas price calculations.
-   // Should be a positive or negative Number, where 0.01 = +1%.
-   // If omitted, `contract.gasPriceBonus` will be used.
-   gasPriceBonus: undefined,
-   // Bonus to apply to gas limit calculations.
-   // Should be a positive or negative Number, where 0.01 = +1%.
-   // If omitted, `contract.gasBonus` will be used.
-   gasBonus: undefined,
-   // If set to true, this call will ONLY estimate the gas used and resolve
-   // to a Number, which is the total gas used (with bonuses).
-   gasOnly: false
-})
+receipt = await contract.new(
+   // Positional argument values.
+   ...[args],
+   // Options. may be omitted.
+   {
+      // Bytecode to deploy, as a hex string.
+      // If not provided, contract.bytecode will be used.
+      bytecode: String,
+      // Named arguments.
+      // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
+      // Do not pass positional arguments if used.
+      args: Object,
+      // Address of caller that will sign the transaction.
+      // Must be unlocked by the provider.
+      // Defaults to web3.eth.defaultAccount or web3.eth.getAccounts()[0].
+      from: String,
+      // Hex-encoded string private key.
+      // Signs the transaction with this private key and sends it from the address
+      // associated with it. Overrides 'from' option.
+      key: String,
+      // Amount of ether to attach to this transaction, in wei.
+      // Can be a base-10 or hex-encoded string.
+      value: String,
+      // Gas price to use, as a hex or base-10 string, in wei.
+      // If not specified, calculated from network gas price with bonus.
+      gasPrice: String,
+      // Execution gas limit.
+      // If not specified, will be estimated with bonus.
+      gas: String,
+      // Bonus to apply to gas price calculations.
+      // Should be a positive or negative Number, where 0.01 = +1%.
+      // If omitted, `contract.gasPriceBonus` will be used.
+      gasPriceBonus: Number,
+      // Bonus to apply to gas limit calculations.
+      // Should be a positive or negative Number, where 0.01 = +1%.
+      // If omitted, `contract.gasBonus` will be used.
+      gasBonus: Number,
+      // If set to true, this call will ONLY estimate the gas used and resolve
+      // to a Number, which is the total gas used (with bonuses).
+      gasOnly: Boolean
+   });
 ```
 
 ### Receipt Events
@@ -492,7 +490,8 @@ construction, deployment, or by explicitly setting a contract's address field.
 ### Past Events
 Past events can be retrieved by calling a method on the contract instance
 sharing the same name as the event. Arguments passed into the method will
-filter results to only those whose arguments match. Event objects follow the
+filter results to only those whose arguments match. You may also omit
+arguments or pass them as null to match any value. Event objects follow the
 format defined in [receipt objects](#the-event-object).
 
 The range of blocks to search for events can be set through the `fromBlock` and
@@ -500,41 +499,52 @@ The range of blocks to search for events can be set through the `fromBlock` and
 can also be used to specify a backwards offset from the last block, where `-1`
 is the last block, `-2` is the second to last block, and so on.
 
-```javascript
+##### Examples
+```js
 const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 // Get all events named 'MyEvent' that occurred in the last block.
-await contract.MyEvent();
+let events = await contract.MyEvent();
 // get all events named 'MyEvent' that occurred in the last 10 blocks.
-await contract.MyEvent({
+let events = await contract.MyEvent({
    fromblock: -10,
    toblock: -1,
 });
-// Get events named 'MyEvent' matching the argument values passed that occurred
+// Get events named 'MyEvent' matching the positional arguments passed that occurred
 // in the last block.
-await contract.MyEvent(ARG_VALUE_0, ARG_VALUE_2, ...[moreArgs]);
-// Get events named 'MyEvent' matching the NAMED argument values that occurred
+await contract.MyEvent(arg1, arg2);
+// Get events named 'MyEvent' matching the NAMED arguments passed that occurred
 // in the last block.
 await contract.MyEvent({
-      args: {'ARG_NAME_0': ARG_VALUE_0, 'ARG_NAME_1': ARG_VALUE_1, ...}
+      args: {arg1Name: arg1, arg2Name: arg2}
    });
-// Full options defaults.
-await contract.MyEvent(...[args], {
-      // Block number to start the search.
-      // Negative values are backwards offsets from the last block.
-      fromBlock: -1,
-      // Block number to start the search.
-      // Negative values are backwards offsets from the last block.
-      toBlock: -1,
-      // Address of contract.
-      // Defaults to contract.address.
-      address: undefined,
-      // Named arguments values to filter events by.
-      // Do not pass positional arguments if used.
-      // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
-      args: undefined
+```
+
+##### Full options
+```js
+// Get past events for contract event named 'MyEvent'.
+events = await contract.MyEvent(
+      // Positional argument filter.
+      ...[args],
+      // Options. may be omitted.
+      {
+         // Block number to start the search.
+         // Negative values are backwards offsets from the last block.
+         // Defaults to -1.
+         fromBlock: Number,
+         // Block number to start the search.
+         // Negative values are backwards offsets from the last block.
+         // Defaults to -1.
+         toBlock: Number,
+         // Address of contract. May be an ENS address.
+         // Defaults to contract.address.
+         address: String,
+         // Named arguments values to filter events by.
+         // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
+         // Do not pass positional arguments if used.
+         args: object
    });
 ```
 
@@ -545,13 +555,16 @@ of each event method, which returns an
 Filters are defined as in [past events](#past-events),
 but you cannot specify a block range, as watches always scan the last block.
 
+Argument filters follow the same format as in [Past Events](#past-events).
+
 Internally, watches are implemented as polled versions of
 [past events](#past-events) and you can configure the poll rate via the
 `pollRate` option. When you no longer need a
 watcher, you should call its `close()` method to avoid memory leaks and network
 congestion.
 
-```javascript
+###### Examples
+```js
 const FlexContract = require('flex-contract');
 const ABI = require('./MyContract.ABI.json');
 
@@ -565,27 +578,36 @@ watcher.on('data', function(event) => {
       // Done with watcher.
       this.close();
    });
-// Watch for events named 'MyEvent' matching some arguments.
-watcher = contract.MyEvent.watch(ARG_VALUE_0, ARG_VALUE_1, ...[moreArgs]);
+// Watch for events named 'MyEvent' matching positional arguments.
+watcher = contract.MyEvent.watch(arg1, arg2);
 // ...
 // Watch for events named 'MyEvent' matching some arguments by name.
 watcher = contract.MyEvent.watch({
-      args: {'ARG_NAME_0': ARG_VALUE_0, 'ARG_NAME_1': ARG_VALUE_1, ...}
+      args: {arg1Name: arg1, arg2Name: arg2}
    });
-// ...
-// Full options defaults.
-watcher = contract.MyEvent.watch(...[args], {
+// Stop polling.
+watcher.close();
+```
+
+##### Full options
+```js
+// Monitor live events for contract event named 'MyEvent'.
+watcher = contract.MyEvent.watch(
+   // Positional argument filters.
+   ...[args],
+   // Options. may be omitted.
+   {
       // How often to scan new blocks, in milliseconds.
-      pollRate: 15000,
-      // Address of contract.
+      // defaults to 15000 (15 seconds).
+      pollRate: Number,
+      // Address of contract. May be an ENS address.
       // Defaults to contract.address.
-      address: undefined,
+      address: String,
       // Named arguments values to filter events by.
-      // Do not pass positional arguments if used.
       // e.g., {ARG_NAME_0: ARG_VALUE_0, ARG_NAME_1: ARG_VALUE_1, ... }
-      args: undefined
+      // Do not pass positional arguments if used.
+      args: Object
    });
-// ...
 ```
 
 ### Encoding/Decoding rules
@@ -655,36 +677,33 @@ You can clone an existing flex-contract instance with the `clone()` method.
 This method accepts an options object that overrides certain properties of the
 original instance.
 
-```javascript
-const FlexContract = require('flex-contract');
-const ABI = require('./MyContract.ABI.json');
-
-const contract = new FlexContract(ABI, DEPLOYED_AT);
-// Clone options defaults.
-// Options left out will be inherited from the original.
-const cloned = conract.clone({
-   // Set the deployed address.
-   address: undefined,
-   // Set the contract's bytecode, used in `new()`.
-   bytecode: undefined,
-   // Set the gas price bonus.
-   // Should be a number, where 0.01 = +1%.
-   gasPriceBonus: undefined,
-   // Set the gas limit bonus.
-   // Should be a number, where 0.01 = +1%.
-   gasLimitBonus: undefined,
-   // Use a web3 instance.
-   web3: undefined,
-   // Use a provider instance.
-   provider: undefined,
-   // Connect to a different providerURI (.e.g, 'http://localhost:8545').
-   providerURI: undefined,
-   // Connect to a different network ('main', 'rinkeby', 'ropsten', 'kovan').
-   network: undefined,
-   // Use an infura API key. You should provide the `network` option as well
-   // if you pass this, or else it will default to `main`.
-   infuraKey: undefined
-});
+##### Full options
+```js
+cloned = conract.clone(
+   // Optional overrides.
+   {
+      // Set the deployed address.
+      address: String,
+      // Set the contract's bytecode, used in `new()`.
+      bytecode: String,
+      // Set the gas price bonus.
+      // Should be a number, where 0.01 = +1%.
+      gasPriceBonus: Number,
+      // Set the gas limit bonus.
+      // Should be a number, where 0.01 = +1%.
+      gasBonus: Number,
+      // Provide a web3 instance.
+      web3: Object,
+      // Provide a provider instance.
+      provider: Object,
+      // Connect to a different providerURI (.e.g, 'http://localhost:8545').
+      providerURI: String,
+      // Connect to a different network ('main', 'rinkeby', 'ropsten', 'kovan').
+      network: String,
+      // Use an infura API key. You should provide the `network` option as well
+      // if you pass this, or else the network will default to `main`.
+      infuraKey: String
+   });
 ```
 
 ### Instance Properties

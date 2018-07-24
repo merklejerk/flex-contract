@@ -361,6 +361,14 @@ create-hmac@^1.1.0, create-hmac@^1.1.2, create-hmac@^1.1.4:
     safe-buffer "^5.0.1"
     sha.js "^2.4.8"
 
+create-web3-provider@^1.0.0:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/create-web3-provider/-/create-web3-provider-1.0.1.tgz#c2d2aadbb661e09e0ab7dec9d194772d2ea019a0"
+  dependencies:
+    ethereumjs-util "^5.2.0"
+    lodash "^4.17.10"
+    web3 "^1.0.0-beta.34"
+
 crypto-browserify@3.12.0:
   version "3.12.0"
   resolved "https://registry.yarnpkg.com/crypto-browserify/-/crypto-browserify-3.12.0.tgz#396cf9f3137f03e4b8e532c58f698254e00f80ec"
@@ -663,6 +671,15 @@ extsprintf@^1.2.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.4.0.tgz#e2689f8f356fad62cca65a3a91c5df5f9551692f"
 
+ez-ens@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/ez-ens/-/ez-ens-1.0.3.tgz#74bb3a322aaad8a3e021c8ec1f5a9c0fea7417c6"
+  dependencies:
+    create-web3-provider "^1.0.0"
+    ethereumjs-util "^5.2.0"
+    lodash "^4.17.10"
+    web3 "^1.0.0-beta.34"
+
 fast-deep-equal@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/fast-deep-equal/-/fast-deep-equal-1.1.0.tgz#c053477817c86b51daa853c81e059b733d023614"
@@ -700,6 +717,18 @@ finalhandler@1.1.1:
     parseurl "~1.3.2"
     statuses "~1.4.0"
     unpipe "~1.0.0"
+
+flex-ether@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.0.0.tgz#924f2b8f8bb4c72cbac650c0b942ba0ec6e59d18"
+  dependencies:
+    bignumber.js "^7.2.1"
+    create-web3-provider "^1.0.0"
+    ethereumjs-tx "1.3.4"
+    ethereumjs-util "^5.2.0"
+    ez-ens "^1.0.3"
+    lodash "^4.17.10"
+    web3 "^1.0.0-beta.34"
 
 for-each@^0.3.2:
   version "0.3.3"
