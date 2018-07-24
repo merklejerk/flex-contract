@@ -371,7 +371,7 @@ function wrapSendTx(wrapped) {
 		const {tx} = await wrapped;
 		return await tx.txId;
 	})();
-	wrapper.confirmed = async (count) => {
+	wrapper.confirmed = async (count=1) => {
 		const {tx} = await wrapped;
 		await tx.confirmed(count);
 		assert.ok(receipt);
