@@ -719,8 +719,8 @@ finalhandler@1.1.1:
     unpipe "~1.0.0"
 
 flex-ether@^1.0.0:
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.1.1.tgz#d5672f7a61dce14ed82dec1067c6030c1a574ce1"
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.1.2.tgz#a2a6c7d97f93b7816f5e3e3d3c45b8a98166b7e0"
   dependencies:
     bignumber.js "^7.2.1"
     create-web3-provider "^1.0.0"

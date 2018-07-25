@@ -121,7 +121,7 @@ contract = new FlexContract(
       gasPriceBonus: Number,
       // Fractional bonus to apply to gas limit estimates when making transactions.
       // 0.01 = +1%. May be negative, but probably not a good idea.
-      // Defaults to 0.33.
+      // Defaults to 0.66
       // Can be overridden in method calls.
       gasBonus: Number
    });
