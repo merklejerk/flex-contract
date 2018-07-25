@@ -506,11 +506,12 @@ const ABI = require('./MyContract.ABI.json');
 
 const contract = new FlexContract(ABI, DEPLOYED_AT);
 // Get all events named 'MyEvent' that occurred in the last block.
+// `events` is an array of event objects.
 let events = await contract.MyEvent();
-// get all events named 'MyEvent' that occurred in the last 10 blocks.
-let events = await contract.MyEvent({
-   fromblock: -10,
-   toblock: -1,
+// Get all events named 'MyEvent' that occurred in the last 10 blocks.
+events = await contract.MyEvent({
+   fromBlock: -10,
+   toBlock: -1,
 });
 // Get events named 'MyEvent' matching the positional arguments passed that occurred
 // in the last block.

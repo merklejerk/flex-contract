@@ -288,6 +288,9 @@ async function getPastEvents(inst, def, opts={}) {
 		address: await inst._eth.resolveAddress(opts.address),
 		topics: coder.encodeLogTopicsFilter(def, args)
 	};
+	// Block numbers need to be in hex format now.
+	filter.fromBlock = util.toHex(filter.fromBlock);
+	filter.toBlock = util.toHex(filter.toBlock);
 	const raw = await inst.web3.eth.getPastLogs(filter);
 	return _.filter(_.map(raw, _raw => decodeLogItem(def, _raw)),
 		log => testEventArgs(log, opts.args));
