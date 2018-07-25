@@ -672,8 +672,8 @@ extsprintf@^1.2.0:
   resolved "https://registry.yarnpkg.com/extsprintf/-/extsprintf-1.4.0.tgz#e2689f8f356fad62cca65a3a91c5df5f9551692f"
 
 ez-ens@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/ez-ens/-/ez-ens-1.0.3.tgz#74bb3a322aaad8a3e021c8ec1f5a9c0fea7417c6"
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/ez-ens/-/ez-ens-1.0.4.tgz#89670912cc49799265b308c0cf5c1f3fd3f65c2b"
   dependencies:
     create-web3-provider "^1.0.0"
     ethereumjs-util "^5.2.0"
@@ -719,8 +719,8 @@ finalhandler@1.1.1:
     unpipe "~1.0.0"
 
 flex-ether@^1.0.0:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.0.1.tgz#cdcc18ce4d8799f43a05471a70f5ed5d8b94541a"
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.1.1.tgz#d5672f7a61dce14ed82dec1067c6030c1a574ce1"
   dependencies:
     bignumber.js "^7.2.1"
     create-web3-provider "^1.0.0"

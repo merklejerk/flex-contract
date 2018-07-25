@@ -129,7 +129,6 @@ module.exports = class FlexContract {
 	}
 };
 module.exports.ABI_CACHE = {};
-module.exports.MAX_GAS = FlexEther.MAX_GAS;
 module.exports.ens = FlexEther.ens;
 
 class EventWatcher extends EventEmitter {

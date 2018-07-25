@@ -22,7 +22,7 @@ function toHex(v) {
 			return v.toLowerCase();
 		return '0x'+(new ethjs.BN(v).toString(16));
 	}
-	if (_.isBuffer(v))
+	if (_.isBuffer(v) || _.isArrayLike(v))
 		return ethjs.bufferToHex(v);
 	throw new Error(`Can't convert value to hex: ${v}`);
 }
