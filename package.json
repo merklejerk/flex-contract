@@ -1,16 +1,16 @@
 {
 	"name": "flex-contract",
-	"version": "1.4.5",
+	"version": "1.4.6",
 	"description": "A modern, flexible Ethereum smart contract abstraction.",
 	"main": "src/index.js",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/cluracan/flex-contract.git"
+		"url": "https://github.com/merklejerk/flex-contract.git"
 	},
 	"bugs": {
-		"url": "https://github.com/cluracan/flex-contract/issues"
+		"url": "https://github.com/merklejerk/flex-contract/issues"
 	},
-	"author": "Lawrence Forman <not.larry@klv.io>",
+	"author": "Lawrence Forman <me@merklejerk.com>",
 	"license": "Apache-2.0",
 	"scripts": {
 		"test": "mocha --timeout 8000 ./test/*.js"

@@ -1,4 +1,4 @@
-![build status](https://travis-ci.org/cluracan/flex-contract.svg?branch=master)
+![build status](https://travis-ci.org/merklejerk/flex-contract.svg?branch=master)
 ![npm package](https://badge.fury.io/js/flex-contract.svg)
 
 # flex-contract
@@ -11,6 +11,11 @@ A modern, flexible Ethereum smart contract abstraction that:
 - Provides separate promises for transaction hashes, receipts, and confirmations.
 - Automatically calculates gas and gas price for transactions in a configurable manner.
 - Automatically resolves ENS addresses across all inputs.
+
+#### Flex-Ether
+If you want a simple library for working with more general (ether) transactions,
+check out the [flex-ether package](https://github.com/merklejerk/flex-ether),
+upon which this library is based.
 
 ## Installation
 ```bash
