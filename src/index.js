@@ -25,6 +25,8 @@ module.exports = class FlexContract {
 		}
 		this._eth = new FlexEther(opts);
 		this._abi = abi.abi || abi.abiDefinition || abi.interface || abi;
+		if (_.isString(this._abi))
+			this._abi = JSON.parse(this._abi);
 		this.bytecode = opts.bytecode || abi.bytecode || abi.code
 			|| abi.binary || null;
 		this.address = opts.address;
