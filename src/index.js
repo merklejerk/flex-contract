@@ -24,7 +24,7 @@ module.exports = class FlexContract {
 			return this._copy(abi, opts)
 		}
 		this._eth = new FlexEther(opts);
-		this._abi = abi.abi || abi.abiDefinition || abi;
+		this._abi = abi.abi || abi.abiDefinition || abi.interface || abi;
 		this.bytecode = opts.bytecode || abi.bytecode || abi.code
 			|| abi.binary || null;
 		this.address = opts.address;
