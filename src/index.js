@@ -337,7 +337,8 @@ async function createCallOpts(inst, def, args, opts) {
 		gasBonus: opts.gasBonus,
 		value: opts.value,
 		data: data,
-		to: to
+		to: to,
+		from: opts.from
 	};
 }
 
