@@ -1,4 +1,5 @@
 'use strict'
+const _ = require('lodash');
 const ganache = require('ganache-cli');
 const FlexContract = require('../src/index');
 const promisify = require('util').promisify;
