@@ -1,4 +1,4 @@
-pragma solidity^0.4.24;
+pragma solidity ^0.5;
 
 contract TestContract {
 
@@ -7,33 +7,41 @@ contract TestContract {
 
 	constructor() public {}
 
-	function constFn() public view returns (uint256) {
+	function constFn() public pure returns (uint256) {
 		return 1;
 	}
 
-	function constFn(uint256 a) public view returns (uint256) {
-		return 2;
+	function constFn(uint256 a) public pure returns (uint256) {
+		return a * 2;
 	}
 
-	function constFn(uint256 a, uint256 b) public view returns (uint256) {
-		return 3;
+	function constFn(uint256 a, uint256 b) public pure returns (uint256) {
+		return (a + b) * 3;
 	}
 
-	function echoAddress(address a) public view returns (address) {
+	function echoAddress(address a) public pure returns (address) {
 		return a;
 	}
 
-	function echoArray(bytes32[] a) public view returns (bytes32[]) {
+	function echoArray(bytes32[] memory a)
+			public pure returns (bytes32[] memory) {
+
+		return a;
+	}
+
+	function echoFixedArray(bytes32[3] memory a)
+			public pure returns (bytes32[3] memory) {
+
 		return a;
 	}
 
 	function returnMultiple(address a, uint256 b, bytes32 c)
-			public view returns (address, uint256, bytes32) {
+			public pure returns (address, uint256, bytes32) {
 		return (a, b, c);
 	}
 
 	function returnMultipleNamed(address a, uint256 b, bytes32 c)
-			public view returns (address r0, uint256 r1, bytes32 r2) {
+			public pure returns (address r0, uint256 r1, bytes32 r2) {
 		return (a, b, c);
 	}
 

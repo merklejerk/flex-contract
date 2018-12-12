@@ -56,24 +56,26 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		assert.equal(await c.constFn(), 1);
-		assert.equal(await c.constFn(1), 2);
-		assert.equal(await c.constFn(1, 2), 3);
+		assert.equal(await c.constFn(2), 4);
+		assert.equal(await c.constFn(1, 2), 9);
 		const addr = randomAddress();
 		assert.equal(await c.echoAddress(addr), addr);
 		const array = _.times(3, () => randomHex(32));
-		assert.equal(_.difference(await c.echoArray(array), array).length, 0);
+		assert.equal(_.difference(array, await c.echoArray(array)).length, 0);
+		assert.equal(_.difference(array, await c.echoFixedArray(array)).length, 0);
 	});
 
 	it('can call constant functions with named args', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new();
 		assert.equal(await c.constFn({args:{}}), 1);
-		assert.equal(await c.constFn({args:{a: 1}}), 2);
-		assert.equal(await c.constFn({args:{a: 1, b: 2}}), 3);
+		assert.equal(await c.constFn({args:{a: 2}}), 4);
+		assert.equal(await c.constFn({args:{a: 1, b: 2}}), 9);
 		const addr = randomAddress();
 		assert.equal(await c.echoAddress({args: {a: addr}}), addr);
 		const array = _.times(3, () => randomHex(32));
-		assert.equal(_.difference(await c.echoArray({args: {a: array}}), array).length, 0);
+		assert.equal(_.difference(array, await c.echoArray({args: {a: array}})).length, 0);
+		assert.equal(_.difference(array, await c.echoFixedArray({args: {a: array}})).length, 0);
 	});
 
 	it('can get multiple return values from constant function', async function() {

@@ -60,7 +60,7 @@ function decodePackedValues(types, v) {
 
 function normalizeEncodeValue(type, v) {
 	if (_.isArray(v)) {
-		const elementType = /^(.+)\[\]$/.exec(type)[1];
+		const elementType = /^(.+)\[\d*\]$/.exec(type)[1];
 		assert(elementType);
 		return _.map(v, _v => normalizeEncodeValue(elementType, v));
 	}
@@ -75,7 +75,7 @@ function normalizeDecodedValue(type, v) {
 	if (/^u?int\d+$/.test(type) && _.isObject(v))
 		return v.toString(10);
 	if (_.isArray(v)) {
-		const elementType = /^(.+)\[\]$/.exec(type)[1];
+		const elementType = /^(.+)\[\d*\]$/.exec(type)[1];
 		assert(elementType);
 		return _.map(v, _v => normalizeDecodedValue(elementType, _v));
 	}
