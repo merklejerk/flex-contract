@@ -332,7 +332,7 @@ async function createCallOpts(inst, def, args, opts) {
 	const data = opts.data || await createCallData(inst, def, args, opts);
 	return {
 		gasPrice: opts.gasPrice,
-		gasLimit: opts.gasLimit,
+		gasLimit: opts.gasLimit | opts.gas,
 		gasPriceBonus: opts.gasPriceBonus,
 		gasBonus: opts.gasBonus,
 		value: opts.value,
