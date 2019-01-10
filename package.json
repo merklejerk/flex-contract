@@ -18,7 +18,7 @@
 	"dependencies": {
 		"bignumber.js": "^7.2.1",
 		"ethereumjs-util": "^5.2.0",
-		"flex-ether": "^1.1.4",
+		"flex-ether": "^1.1.5",
 		"lodash": "^4.17.10",
 		"web3": "^1.0.0-beta.34"
 	},
@@ -47,5 +47,7 @@
 		"simple",
 		"easy"
 	],
-	"engines": {"node": ">=8.0"}
+	"engines": {
+		"node": ">=8.0"
+	}
 }

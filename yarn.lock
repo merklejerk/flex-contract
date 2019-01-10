@@ -116,7 +116,7 @@ async-eventemitter@^0.2.2:
   dependencies:
     async "^2.4.0"
 
-"async-eventemitter@github:ahultgren/async-eventemitter#fa06e39e56786ba541c180061dbf2c0a5bbf951c":
+async-eventemitter@ahultgren/async-eventemitter#fa06e39e56786ba541c180061dbf2c0a5bbf951c:
   version "0.2.3"
   resolved "https://codeload.github.com/ahultgren/async-eventemitter/tar.gz/fa06e39e56786ba541c180061dbf2c0a5bbf951c"
   dependencies:
@@ -2022,10 +2022,10 @@ find-up@^2.1.0:
   dependencies:
     locate-path "^2.0.0"
 
-flex-ether@^1.1.4:
-  version "1.1.4"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.1.4.tgz#e291d3e06d3781e1eca2e3940f8ad7ba4410a365"
-  integrity sha512-ZYUJjzSYvlESIP1uOo2CeE+l2uNRvDQ7degbDwXr7X0VKr+WeKeMOuPl8DHWtUs/ZFNLftjnIoXoCw6o1qFe4w==
+flex-ether@^1.1.5:
+  version "1.1.5"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.1.5.tgz#db0e05f68007df7639534ed30c187a9b8e4777ea"
+  integrity sha512-3MMZYpTEodhp+dzeGK0jXMqsXZkVLIRGWYrCmyMXsVqoItHmuM/hhgJWOcY5eEX8vhcjnXaNMiFQp/e3zvtQtQ==
   dependencies:
     bignumber.js "^7.2.1"
     create-web3-provider "^1.0.0"
