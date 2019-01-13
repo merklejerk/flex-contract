@@ -2022,10 +2022,10 @@ find-up@^2.1.0:
   dependencies:
     locate-path "^2.0.0"
 
-flex-ether@^1.2.1:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.2.1.tgz#cc07389b40e5a48b471dc8b117f8cd6a7a7f575c"
-  integrity sha512-R7OiYmV3x1Zwp8NFy84tA2OoP88xAvHS4mvSM48ROdZh+FyG2jcigvXxp/evE27wbXB+BQ4/fSznsqtVaXmQ0A==
+flex-ether@^1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.2.4.tgz#9b631a710482898e2fbbb88bf33aba95771be9a6"
+  integrity sha512-6cG/OfBtYDwi+9t4LOzMM1l0E4dvtg6OwsXPg2CU6LE+JKaOzL4UTkmm1BHjfNfqmuZ4LBqrjKbc13sIiJ/CqQ==
   dependencies:
     bignumber.js "^7.2.1"
     create-web3-provider "^1.0.0"
