@@ -65,6 +65,14 @@ module.exports = class FlexContract {
 		this._eth.web3 = v;
 	}
 
+	get eth() {
+		return this._eth;
+	}
+
+	set eth(v) {
+		this._eth = v;
+	}
+
 	get gasBonus() {
 		return this._eth.gasBonus;
 	}
