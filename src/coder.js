@@ -70,6 +70,12 @@ function normalizeDecodedValue(type, value) {
 	// Convert integers to strings.
 	if (/^u?int/.test(elementType) && _.isObject(value))
 		return value.toString(10);
+	// Resize bytes values.
+	const m = /^bytes(\d+)?$/.exec(elementType);
+	if (m && m[1]) {
+		const size = parseInt(m[1]);
+		return ethjs.bufferToHex(ethjs.setLengthRight(value, size));
+	}
 	return value;
 }
 
@@ -84,6 +90,12 @@ function normalizeEncodeValue(type, value) {
 	if (/^u?int/.test(elementType)
 			&& _.isObject(value) && _.isFunction(value.toString))
 		return value.toString(10);
+	// Resize bytes values.
+	const m = /^bytes(\d+)?$/.exec(elementType);
+	if (m && m[1]) {
+		const size = parseInt(m[1]);
+		return ethjs.bufferToHex(ethjs.setLengthRight(value, size));
+	}
 	return value;
 }
 
