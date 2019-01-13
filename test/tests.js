@@ -7,9 +7,9 @@ const fs = require('mz/fs');
 const assert = require('assert');
 const crypto = require('crypto');
 const ethjs = require('ethereumjs-util');
-const ABI = JSON.parse(fs.readFileSync(require.resolve('./contracts/TestContract_sol_TestContract.abi'), 'utf-8'));
-const BYTECODE = fs.readFileSync(require.resolve('./contracts/TestContract_sol_TestContract.bin'), 'utf-8').trim();
-const RUNTIME_BYTECODE = fs.readFileSync(require.resolve('./contracts/TestContract_sol_TestContract.runtime.bin'), 'utf-8').trim();
+const ABI = JSON.parse(fs.readFileSync(require.resolve('./contracts/TestContract.abi'), 'utf-8'));
+const BYTECODE = fs.readFileSync(require.resolve('./contracts/TestContract.bin'), 'utf-8').trim();
+const RUNTIME_BYTECODE = fs.readFileSync(require.resolve('./contracts/TestContract.bin-runtime'), 'utf-8').trim();
 const Web3 = require('web3');
 
 describe('flex-contract', function() {
@@ -37,24 +37,30 @@ describe('flex-contract', function() {
 
 	it('can deploy', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		const r = c.new();
+		const r = c.new(123);
 		const txId = await r.txId;
 		assert.ok(txId);
 		const receipt = await r.receipt;
 		assert.ok(receipt.contractAddress);
 	});
 
+	it('deploy respects parameters', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new(123);
+		assert.equal(await c.x(), '123');
+	});
+
 	it('can get code digest', async function() {
 		const digest = Web3.utils.keccak256('0x'+RUNTIME_BYTECODE);
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const _digest = await c.getCodeDigest();
 		assert.equal(_digest, digest);
 	});
 
 	it('can call constant functions', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		assert.equal(await c.constFn(), 1);
 		assert.equal(await c.constFn(2), 4);
 		assert.equal(await c.constFn(1, 2), 9);
@@ -67,7 +73,7 @@ describe('flex-contract', function() {
 
 	it('can call constant functions with named args', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		assert.equal(await c.constFn({args:{}}), 1);
 		assert.equal(await c.constFn({args:{a: 2}}), 4);
 		assert.equal(await c.constFn({args:{a: 1, b: 2}}), 9);
@@ -80,7 +86,7 @@ describe('flex-contract', function() {
 
 	it('can get multiple return values from constant function', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultiple(...args);
 		for (let i = 0; i < args; i++)
@@ -89,7 +95,7 @@ describe('flex-contract', function() {
 
 	it('can get multiple named return values from constant function', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultipleNamed(...args);
 		for (let i = 0; i < args; i++)
@@ -98,7 +104,7 @@ describe('flex-contract', function() {
 
 	it('can refer to named multiple return values from constant function by name', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const r = await c.returnMultipleNamed(...args);
 		assert.equal(r['r0'], args[0]);
@@ -106,23 +112,31 @@ describe('flex-contract', function() {
 		assert.equal(r['r2'], args[2]);
 	});
 
+	it('can pass a structure as a parameter and receive one in return', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new(123);
+		const args = [{foo: 30, bar: 40}];
+		const r = await c.callWithStruct(...args, {});
+		assert.equal(r['foo'], '31');
+		assert.equal(r['bar'], '39');
+	});
+
 	it('can get gas estimate for deployment', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
-		const r = await c.new({gasOnly: true});
+		const r = await c.new(123, {gasOnly: true});
 		assert.ok(_.isNumber(r));
 	});
 
 	it('can get gas estimate for transaction', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const r = await c.transact({gasOnly: true});
 		assert.ok(_.isNumber(r));
 	});
 
 	it('can transact', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const r = c.transact();
 		assert.ok(await r.txId);
 		assert.ok(await r.receipt);
@@ -130,7 +144,7 @@ describe('flex-contract', function() {
 
 	it('can wait for confirmation', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const r = c.transact();
 		await r;
 		const confirmed = (async () => {
@@ -144,7 +158,7 @@ describe('flex-contract', function() {
 
 	it('can wait for confirmation after it already happened', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const r = c.transact();
 		await r;
 		// Force ganache to mine some new blocks and send confirmations.
@@ -155,7 +169,7 @@ describe('flex-contract', function() {
 
 	it('can transact and pay', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		await c.transact({value: 100});
 		const bal = await c.web3.eth.getBalance(c.address);
 		assert.equal(bal, 100);
@@ -163,7 +177,7 @@ describe('flex-contract', function() {
 
 	it('can call a cloned a contract', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const clone = c.clone();
 		await clone.constFn();
 		await clone.transact();
@@ -172,12 +186,12 @@ describe('flex-contract', function() {
 	it('can deploy a cloned a contract', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		const clone = c.clone();
-		await clone.new();
+		await clone.new(123);
 	});
 
 	it('can get a single receipt event', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c.raiseEvent(...args);
 		const event = receipt.events[0];
@@ -190,7 +204,7 @@ describe('flex-contract', function() {
 
 	it('can get multiple receipt events', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const count = 3;
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c.raiseEvents(count, ...args);
@@ -208,7 +222,7 @@ describe('flex-contract', function() {
 
 	it('can find a receipt event with findEvent', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const count = 3;
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt =await c.raiseEvents(count, ...args);
@@ -225,8 +239,8 @@ describe('flex-contract', function() {
 	it('can see receipt event raised in other contract', async function() {
 		const c1 = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		const c2 = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c1.new();
-		await c2.new();
+		await c1.new(123);
+		await c2.new(123);
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c1.callOther(c2.address, ...args);
 		const event = receipt.events[0];
@@ -239,7 +253,7 @@ describe('flex-contract', function() {
 
 	it('can get receipt event with address override', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		// Don't let it fall back to the cache or defined address.
 		const address = c.address;
 		assert.ok(FlexContract.ABI_CACHE[address]);
@@ -257,13 +271,13 @@ describe('flex-contract', function() {
 
 	it('can send transaction with explicit key', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		await c.transact({key: accounts[0].secretKey});
 	});
 
 	it('can get past events', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const argss = _.times(8, () =>
 			[randomAddress(), _.random(1, 1e6), randomHex(32)]);
 		for (let args of argss)
@@ -282,7 +296,7 @@ describe('flex-contract', function() {
 
 	it('can get past events with positional filter args', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const choices = [
 			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
@@ -316,7 +330,7 @@ describe('flex-contract', function() {
 
 	it('can get past events with named filter args', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const choices = [
 			_.times(2, () => randomAddress()),
 			_.times(2, () => _.random(1, 1e6)),
@@ -356,7 +370,7 @@ describe('flex-contract', function() {
 
 	it('can watch future events', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const watch = c.SingleEvent.watch({pollRate: 25});
 		watches.push(watch);
 		const logs = [];
@@ -381,7 +395,7 @@ describe('flex-contract', function() {
 
 	it('can watch future events with a full filter', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const logs = [];
 		const choices = [
 			_.times(2, () => randomAddress()),
@@ -412,7 +426,7 @@ describe('flex-contract', function() {
 
 	it('can watch future events with a partial filter', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const logs = [];
 		const choices = [
 			_.times(2, () => randomAddress()),
@@ -444,7 +458,7 @@ describe('flex-contract', function() {
 
 	it('can stop watching future events', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new();
+		await c.new(123);
 		const watch = c.SingleEvent.watch({pollRate: 25});
 		watches.push(watch);
 		const logs = [];

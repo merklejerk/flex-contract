@@ -1,11 +1,21 @@
 pragma solidity ^0.5;
+pragma experimental ABIEncoderV2;
 
 contract TestContract {
+
+	struct MyStruct {
+		uint32 foo;
+		uint32 bar;
+	}
 
 	event SingleEvent(address indexed a, uint256 b, bytes32 c);
 	event RepeatedEvent(uint256 idx, address indexed a, uint256 b, bytes32 c);
 
-	constructor() public {}
+	uint256 public x;
+
+	constructor(uint256 _x) public {
+		x = _x;
+	}
 
 	function constFn() public pure returns (uint256) {
 		return 1;
@@ -68,5 +78,12 @@ contract TestContract {
 			public payable returns (bool) {
 
 		return TestContract(other).raiseEvent(a, b, c);
+	}
+
+	function callWithStruct(MyStruct memory s)
+			public pure returns (MyStruct memory r) {
+
+		r.foo = s.foo + 1;
+		r.bar = s.bar - 1;
 	}
 }

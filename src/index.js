@@ -30,7 +30,6 @@ module.exports = class FlexContract {
 		this.bytecode = opts.bytecode || abi.bytecode || abi.code
 			|| abi.binary || null;
 		this.address = opts.address;
-		this._contract = new this.web3.eth.Contract(this._abi, opts.address);
 		initMethods(this, this._abi);
 		initEvents(this, this._abi);
 	}
@@ -45,7 +44,6 @@ module.exports = class FlexContract {
 		this._abi = inst._abi;
 		this.address = opts.address || inst._address;
 		this.bytecode = opts.bytecode || inst.bytecode;
-		this._contract = inst._contract;
 		initMethods(this, this._abi);
 		initEvents(this, this._abi);
 		return this;
@@ -57,10 +55,6 @@ module.exports = class FlexContract {
 
 	get abi() {
 		return this._abi;
-	}
-
-	get contract() {
-		return this._contract;
 	}
 
 	get web3() {
@@ -386,7 +380,7 @@ function wrapSendTx(wrapped) {
 }
 
 function decodeCallOutput(def, encoded) {
-	const decoded = coder.decodeCallOutput(def, encoded);
+	const decoded = coder.decodeCallOutput(def.outputs, encoded);
 	// Return a single value if only one type.
 	if (def.outputs.length == 1)
 		return decoded[0];
@@ -405,9 +399,12 @@ function augmentReceipt(inst, address, receipt) {
 		if (!abi)
 			continue;
 		for (let log of groups[contract]) {
-			const decoded = decodeLogItem(abi, log);
-			if (decoded)
-				events.push(decoded);
+			const def = findLogDef(abi, log.topics[0]);
+			if (def) {
+				const decoded = decodeLogItem(def, log);
+				if (decoded)
+					events.push(decoded);
+			}
 		}
 	}
 	return _.assign(receipt, {
@@ -417,11 +414,20 @@ function augmentReceipt(inst, address, receipt) {
 	});
 }
 
-function decodeLogItem(abi, log) {
-	const decoded = coder.decodeLogItemArgs(abi, log);
+function findLogDef(abi, signature) {
+	for (let def of abi) {
+		if (def.type == 'event') {
+			if (coder.encodeLogSignature(def) == signature)
+				return def;
+		}
+	}
+}
+
+function decodeLogItem(def, log) {
+	const args = coder.decodeLogItemArgs(def, log);
 	return {
-		name: decoded.name,
-		args: decoded.args,
+		name: def.name,
+		args: args,
 		address: log.address,
 		blockNumber: log.blockNumber,
 		logIndex: log.logIndex,
@@ -453,15 +459,15 @@ function findEvents(name, args, events) {
 
 async function createCallData(inst, def, args, opts) {
 	const _args = await resolveCallArgs(inst, args, def);
+	const abi = inst._eth.web3.eth.abi;
 	if (def.type == 'constructor') {
 		const bytecode = opts.bytecode || inst.bytecode;
 		if (!bytecode)
 			throw new Error('Contract has no bytecode defined and it was not provided.');
-		return inst._contract.deploy(
-				{data: util.addHexPrefix(bytecode), arguments: _args})
-			.encodeABI();
+		return util.addHexPrefix(bytecode) +
+			abi.encodeParameters(def.inputs, _args).substr(2);
 	}
-	return inst._contract.methods[def.name](..._args).encodeABI();
+	return abi.encodeFunctionCall(def, _args);
 }
 
 async function resolveCallArgs(inst, args, def, opts={}) {

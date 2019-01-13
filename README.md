@@ -11,6 +11,7 @@ A modern, flexible Ethereum smart contract abstraction that:
 - Provides separate promises for transaction hashes, receipts, and confirmations.
 - Automatically calculates gas and gas price for transactions in a configurable manner.
 - Automatically resolves ENS addresses across all inputs.
+- Experimental ABIEncoderV2 support.
 
 #### Flex-Ether
 If you want a simple library for working with more general (ether) transactions,
@@ -76,6 +77,7 @@ watcher.on('data', event => {
 - [ENS addresses](#ens-addresses)
 - [Cloning](#cloning)
 - [Instance Properties](#instance-properties)
+- [Passing Structs](#passing-structs)
 
 ### Creating a flex contract
 The only requirement for creating an instance is the ABI, which can be a plain
@@ -84,7 +86,7 @@ Truffle artifact produced by the [truffle suite](https://truffleframework.com/).
 
 By default, the instance will create an [Infura](https://infura.io) provider to
 talk to the main network. You can modify this behavior with the options
-`network`, `infuraKey`, `web3`, `provider`, or `providerURI`.
+`network`, `infuraKey`, `web3`, `eth`, `provider`, or `providerURI`.
 
 Some options can be overridden in method calls.
 
@@ -113,8 +115,13 @@ contract = new FlexContract(
       // Use a custom provider instance (e.g., web3.currentProvider for metamask).
       // Overrides all provider options.
       provider: Object,
-      // Use a custom web3 instance Overrides all provider options.
+      // Use a custom web3 instance (that will be wrapped in a FlexEther).
+      // Overrides all provider options.
       web3: Object,
+      // Use a custom FlexEther (web3 wrapper) instance.
+      // Overrides all provider options.
+      // See https://github.com/merklejerk/flex-ether
+      eth: FlexEther,
       // Hex-encoded string output of solc --bin.
       // If the ABI passed as the first argument is a truffle artifact,
       // the bytecode will already be defined.
@@ -720,5 +727,28 @@ change. Many of these can also be overridden in individual call options.
 - `gasBonus (Number)` Gas limit estimate bonus for transactions, where `0.01 = +1%`. May be negative.
 - `gasPriceBonus (Number)` Gas price bonus for transactions, where `0.01 = +1%`. May be negative.
 - `bytecode` Bytecode of the contract, used for deployment with `new()`.
-- `web3 (Web3)` Web3 instance used.
+- `web3 (Web3)` The wrapped Web3 instance used.
 - `abi` (Read-only) The ABI defining the contract.
+- `eth` (Read-only) The [flex-ether](https://github.com/merklejerk/flex-ether)
+instance used.
+
+### Passing Structs
+`flex-contract` supports passing and receiving structs to/from your smart
+contracts. You must first enable the experimental ABIEncoderV2 support in your
+smart contracts.
+
+If you decide to pass a struct (as a plain javascript object) as the last
+positional parameter in your call, you *must* supply at least an empty options
+object as the last parameter of your call. This allows the library to
+differentiate between a struct parameter and an options object.
+
+```js
+// ...
+// Passing a hex string and struct defined as:
+// MyStruct {
+//    uint32 foo;
+//    bytes3: bar;
+// }
+// Note the empty options object at the end of the call.
+await myContract.passingAStruct('0xdeadbeef', {foo: 1, bar: '0xff3021'}, {});
+```

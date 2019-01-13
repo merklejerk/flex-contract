@@ -1,148 +1,95 @@
 'use strict'
 const _ = require('lodash');
 const Web3 = require('web3');
-const keccak256 = Web3.utils.keccak256;
 const assert = require('assert');
 const ethjs = require('ethereumjs-util');
-const coder = require('./lib/web3.js/lib/solidity/coder')
-const util = require('./util');
 
-function encodeLogSignature(eventABI) {
-	const args = _.map(eventABI.inputs, i => i.type).join(',');
-	const textSig = `${eventABI.name}(${args})`;
-	return keccak256(Buffer.from(textSig));
-}
+const _coder = (new Web3()).eth.abi;
 
-function encodeLogTopicsFilter(eventABI, args=[]) {
+function encodeLogTopicsFilter(def, args=[]) {
 	const topicArgs = [];
-	assert(eventABI.inputs.length == args.length);
+	assert(def.inputs.length == args.length);
 	for (let i = 0; i < args.length; i++) {
-		if (eventABI.inputs[i].indexed) {
+		if (def.inputs[i].indexed) {
 			if (!_.isNil(args[i]))
-				topicArgs.push(encodeValue(eventABI.inputs[i].type, args[i]));
+				topicArgs.push(encodeParameter(def.inputs[i].type, args[i]));
 			else
 				topicArgs.push(null);
 		}
 	}
-	return [encodeLogSignature(eventABI), ...topicArgs];
+	return [_coder.encodeEventSignature(def), ...topicArgs];
 }
 
-function encodeValue(type, v) {
-	assert(!_.isNil(v));
-	v = normalizeEncodeValue(type, v);
-	return util.addHexPrefix(coder.encodeParam(type, v));
+function decodeCallOutput(outputs, data) {
+	return normalizeDecodedOutput(
+		outputs,
+		_coder.decodeParameters(outputs, data));
 }
 
-function encodePackedValues(types, values) {
-	assert(types.length == values.length);
-	values = _.times(types.length, i => normalizeEncodeValue(types[i], values[i]));
-	return util.addHexPrefix(coder.encodeParams(types, values));
+function encodeLogSignature(def) {
+	return _coder.encodeEventSignature(def);
 }
 
-function decodeValue(type, v) {
-	v = util.stripHexPrefix(v);
-	return normalizeDecodedValue(type, coder.decodeParam(type, v));
+function decodeLogItemArgs(def, log) {
+	return normalizeDecodedOutput(
+		def.inputs,
+		_coder.decodeLog(
+			def.inputs,
+			log.data,
+			log.topics.slice(1)));
 }
 
-function decodeList(types, values) {
-	assert(types.length == values.length);
-	values = _.map(values, util.stripHexPrefix);
-	return _.times(types.length, i => decodeValue(types[i], values[i]));
+function encodeParameter(type, value) {
+	assert(!_.isNil(value));
+	return _coder.encodeParameter(type, normalizeEncodeValue(type, value));
 }
 
-function decodePackedValues(types, v) {
-	v = util.stripHexPrefix(v);
-	const r = _.map(coder.decodeParams(types, v),
-		(v,i) => normalizeDecodedValue(types[i], v));
-	assert(r.length == types.length);
-	return r;
-}
-
-function normalizeEncodeValue(type, v) {
-	if (_.isArray(v)) {
-		const elementType = /^(.+)\[\d*\]$/.exec(type)[1];
-		assert(elementType);
-		return _.map(v, _v => normalizeEncodeValue(elementType, v));
-	}
-	if (type == 'address' || /^bytes\d+$/.test(type))
-		return v.toLowerCase();
-	return v;
-}
-
-function normalizeDecodedValue(type, v) {
-	if (type == 'address')
-		return ethjs.toChecksumAddress(v);
-	if (/^u?int\d+$/.test(type) && _.isObject(v))
-		return v.toString(10);
-	if (_.isArray(v)) {
-		const elementType = /^(.+)\[\d*\]$/.exec(type)[1];
-		assert(elementType);
-		return _.map(v, _v => normalizeDecodedValue(elementType, _v));
-	}
-	return v;
-}
-
-function decodeLogItemArgs(abi, log) {
-	if (_.isArray(abi)) {
-		for (let s of abi) {
-			if (s.type =='event') {
-				const r = decodeLogItemArgs(s, log);
-				if (r)
-					return r;
-			}
-		}
-	} else if (abi.type == 'event' && log.topics[0] == encodeLogSignature(abi)) {
-		const indexedTypes = _.map(
-			_.filter(abi.inputs, i => i.indexed), i => i.type);
-		const nonIndexedTypes = _.map(
-			_.filter(abi.inputs, i => !i.indexed), i => i.type);
-		const indexedValues = decodeList(indexedTypes, log.topics.slice(1));
-		const nonIndexedValues = decodePackedValues(nonIndexedTypes, log.data);
-		let i = 0; let j = 0;
-		const args = {};
-		for (let k = 0; k < abi.inputs.length; k++) {
-			const input = abi.inputs[k];
-			let v = null;
-			if (input.indexed)
-				v = indexedValues[i++];
-			else
-				v = nonIndexedValues[j++];
-			if (input.name)
-				args[input.name] = v;
-			args[k] = v;
-		}
-		return {
-			name: abi.name,
-			args: args
-		};
-	}
-}
-
-function decodeCallOutput(fnABI, data) {
-	const outputs = fnABI.outputs;
-	const values = decodePackedValues(_.map(outputs, o => o.type), data);
-	assert(outputs.length == values.length);
-	const r = {};
+function normalizeDecodedOutput(outputs, decoded) {
 	for (let i = 0; i < outputs.length; i++) {
-		const output = outputs[i];
-		const v = values[i];
-		if (output.name)
-			r[output.name] = v;
-		r[i] = v;
+		const o = outputs[i];
+		let v = decoded[i];
+		if (o.type == 'tuple')
+			v = normalizeDecodedOutput(o.components, v);
+		else
+			v = normalizeDecodedValue(o.type, v);
+		if (o.name)
+			decoded[o.name] = v;
+		decoded[i] = v;
 	}
-	return r;
+	return decoded;
 }
 
+function normalizeDecodedValue(type, value) {
+	if (_.isArray(value))
+		return _.map(value, v => normalizeDecodedValue(type, v));
+	const elementType = /^[a-z0-9]+/i.exec(type)[0];
+	assert(elementType);
+	// Convert addresses to checksummed addresses.
+	if (elementType == 'address')
+		return ethjs.toChecksumAddress(value);
+	// Convert integers to strings.
+	if (/^u?int/.test(elementType) && _.isObject(value))
+		return value.toString(10);
+	return value;
+}
+
+function normalizeEncodeValue(type, value) {
+	if (_.isArray(value))
+		return _.map(value, v => normalizeDecodedValue(type, v));
+	const elementType = /^[a-z0-9]+/i.exec(type)[0];
+	assert(elementType);
+	if (elementType == 'address')
+		return ethjs.toChecksumAddress(value);
+	// Convert big number objects to strings.
+	if (/^u?int/.test(elementType)
+			&& _.isObject(value) && _.isFunction(value.toString))
+		return value.toString(10);
+	return value;
+}
 
 module.exports = {
-	decodeLogItemArgs: decodeLogItemArgs,
-	decodeValue: decodeValue,
-	decodePackedValues: decodePackedValues,
-	decodeList: decodeList,
-	decodeCallOutput: decodeCallOutput,
-	normalizeDecodedValue: normalizeDecodedValue,
 	encodeLogSignature: encodeLogSignature,
+	decodeLogItemArgs: decodeLogItemArgs,
+	decodeCallOutput: decodeCallOutput,
 	encodeLogTopicsFilter: encodeLogTopicsFilter,
-	encodeValue: encodeValue,
-	encodePackedValues: encodePackedValues
 };
