@@ -112,6 +112,25 @@ describe('flex-contract', function() {
 		assert.equal(r['r2'], args[2]);
 	});
 
+	it('can get fixed-size array', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new(123);
+		const items = await c.returnFixedArray(2);
+		assert(_.isArray(items));
+		assert(items.length == 3);
+		assert.deepEqual(items, [2, 4, 6]);
+	});
+
+	it('can get tuple with fixed-size array', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new(123);
+		const r = await c.returnMultipleWithFixedArray(2);
+		assert.equal(r.sum, 2 + 4 + 6);
+		assert(_.isArray(r.items));
+		assert(r.items.length == 3);
+		assert.deepEqual(r.items, [2, 4, 6]);
+	});
+
 	it('can pass a structure as a parameter and receive one in return', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123);

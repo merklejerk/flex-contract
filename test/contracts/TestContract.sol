@@ -55,6 +55,21 @@ contract TestContract {
 		return (a, b, c);
 	}
 
+	function returnFixedArray(uint256 base)
+			public pure returns (uint256[3] memory items) {
+		for (uint32 i = 0; i < 3; i++)
+			items[i] = base * (i+1);
+	}
+
+	function returnMultipleWithFixedArray(uint256 base)
+			public pure returns (uint256 sum, uint256[3] memory items) {
+		sum = 0;
+		for (uint32 i = 0; i < 3; i++) {
+			items[i] = base * (i+1);
+			sum += items[i];
+		}
+	}
+
 	function transact() public payable returns (bool) {
 		return true;
 	}
