@@ -103,11 +103,10 @@ contract = new FlexContract(
       // May be 'main', 'ropsten', 'rinkeby', or 'kovan'.
       // Defaults to 'main'
       network: String,
-      // Infura API Key to use.
-      // One will be generated if not defined.
+      // Your Infura project ID, if not passing a custom provider.
       infuraKey: String,
       // Connect to an existing provider at a URI
-      // (e.g., http://localhost:8545 or https://mainnet.infura.io/YOURAPIKEY).
+      // (e.g., http://localhost:8545 or https://mainnet.infura.io/v3/PROJECT_ID).
       // The 'net' option is required is using an IPC path.
       providerURI: String,
       // net instance, from require('net'), if using IPC path in providerURI
@@ -713,7 +712,7 @@ cloned = conract.clone(
       providerURI: String,
       // Connect to a different network ('main', 'rinkeby', 'ropsten', 'kovan').
       network: String,
-      // Use an infura API key. You should provide the `network` option as well
+      // Your Infura project ID. You should provide the `network` option as well
       // if you pass this, or else the network will default to `main`.
       infuraKey: String
    });
