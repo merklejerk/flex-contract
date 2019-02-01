@@ -51,7 +51,7 @@ describe('flex-contract', function() {
 	});
 
 	it('can get code digest', async function() {
-		const digest = Web3.utils.keccak256('0x'+RUNTIME_BYTECODE);
+		const digest = ethjs.bufferToHex(ethjs.keccak256('0x'+RUNTIME_BYTECODE));
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123);
 		const _digest = await c.getCodeDigest();
