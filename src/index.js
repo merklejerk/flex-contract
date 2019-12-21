@@ -32,10 +32,13 @@ module.exports = class FlexContract {
 		this.address = opts.address;
 		initMethods(this, this._abi);
 		initEvents(this, this._abi);
+		populateEventCache(this._abi.filter(e => e.type === 'event'));
 	}
 
 	_copy(inst, opts={}) {
-		if (opts.web3 || opts.provider ||
+		if (opts.eth) {
+			this._eth = opts.eth;
+		} else if (opts.provider ||
 				opts.providerURI || opts.network || opts.infuraKey) {
 			this._eth = new FlexEther(opts);
 		} else {
@@ -55,14 +58,6 @@ module.exports = class FlexContract {
 
 	get abi() {
 		return this._abi;
-	}
-
-	get web3() {
-		return this._eth.web3;
-	}
-
-	set web3(v) {
-		this._eth.web3 = v;
 	}
 
 	get eth() {
@@ -97,17 +92,10 @@ module.exports = class FlexContract {
 		if (_.isString(v)) {
 			if (ethjs.isValidAddress(v)) {
 				this._address = ethjs.toChecksumAddress(v);
-				module.exports.ABI_CACHE[v] = this._abi;
-			}
-			else {
+			} else {
 				this._address = v;
-				// Cache the abi once the ENS resolves.
-				this._eth.resolveAddress(v).then(r =>
-					module.exports.ABI_CACHE[r] = this._abi)
-					.catch(_.noop);
 			}
-		}
-		else
+		} else
 			this._address = undefined;
 	}
 
@@ -125,14 +113,12 @@ module.exports = class FlexContract {
 		const r = wrapSendTx(sendTx(this, def, args, opts));
 		r.receipt.then(
 			receipt => {
-				const addr = ethjs.toChecksumAddress(receipt.contractAddress);
-				this._address = addr;
-				module.exports.ABI_CACHE[addr] = this._abi;
+				this._address = ethjs.toChecksumAddress(receipt.contractAddress);
 			});
 		return r;
 	}
 };
-module.exports.ABI_CACHE = {};
+const EVENT_CACHE = module.exports.EVENT_CACHE = {};
 module.exports.ens = FlexEther.ens;
 
 class EventWatcher extends EventEmitter {
@@ -149,12 +135,11 @@ class EventWatcher extends EventEmitter {
 
 	async _init(address, args) {
 		try {
-			const web3 = this._inst.web3;
 			const eth = this._inst._eth;
 			const _args = await resolveCallArgs(this._inst, args, this._def,
 				{partial: true, indexedOnly: true});
 			this._filter = {
-				address: await eth.resolveAddress(address),
+				address,
 				topics: coder.encodeLogTopicsFilter(this._def, _args)
 			};
 			this._lastBlock = await eth.getBlockNumber();
@@ -169,13 +154,15 @@ class EventWatcher extends EventEmitter {
 		if (this._stop || _.isNil(this._lastBlock))
 			return;
 		try {
-			const web3 = this._inst.web3;
 			const eth = this._inst._eth;
 			const currentBlock = await eth.getBlockNumber();
 			if (currentBlock > this._lastBlock) {
-				const filter = _.assign({}, this._filter,
-					{toBlock: currentBlock, fromBlock: this._lastBlock + 1});
-				const raw = await web3.eth.getPastLogs(filter);
+				const filter = {
+					...this._filter,
+					fromBlock: this._lastBlock + 1,
+					toBlock: currentBlock,
+				};
+				const raw = await eth.getPastLogs(filter);
 				this._lastBlock = currentBlock;
 				const logs = _.filter(
 					_.map(raw, _raw => decodeLogItem(this._def, _raw)),
@@ -204,10 +191,10 @@ async function getCodeDigest(inst, opts={}) {
 	opts = _.defaults({}, opts, {
 		address: inst._address
 	});
-	const address = await inst._eth.resolveAddress(opts.address || opts.to);
+	const address = await inst._eth.resolve(opts.address || opts.to);
 	if (!address)
 		throw new Error('Cannot determine contract adress and it was not provided.');
-	const code = await inst.web3.eth.getCode(address, opts.block);
+	const code = await inst._eth.getCode(address, opts.block);
 	return util.toHex(ethjs.keccak256(
 		Buffer.from(util.stripHexPrefix(code), 'hex')));
 }
@@ -275,6 +262,12 @@ function initEvents(inst, abi) {
 	}
 }
 
+function populateEventCache(eventDefs) {
+	for (const eventDef of eventDefs) {
+		EVENT_CACHE[coder.encodeLogSignature(eventDef)] = eventDef;
+	}
+}
+
 async function getPastEvents(inst, def, opts={}) {
 	opts = _.defaults({}, opts, {
 		fromBlock: -1,
@@ -287,15 +280,12 @@ async function getPastEvents(inst, def, opts={}) {
 	const args = await resolveCallArgs(inst, opts.args || {}, def,
 		{partial: true, indexedOnly: true});
 	const filter = {
-		fromBlock: await inst._eth.resolveBlockDirective(opts.fromBlock),
-		toBlock: await inst._eth.resolveBlockDirective(opts.toBlock),
-		address: await inst._eth.resolveAddress(opts.address),
+		fromBlock: opts.fromBlock,
+		toBlock: opts.toBlock,
+		address: opts.address,
 		topics: coder.encodeLogTopicsFilter(def, args)
 	};
-	// Block numbers need to be in hex format now.
-	filter.fromBlock = util.toHex(filter.fromBlock);
-	filter.toBlock = util.toHex(filter.toBlock);
-	const raw = await inst.web3.eth.getPastLogs(filter);
+	const raw = await inst._eth.getPastLogs(filter);
 	return _.filter(_.map(raw, _raw => decodeLogItem(def, _raw)),
 		log => testEventArgs(log, opts.args));
 }
@@ -310,7 +300,7 @@ function watchEvents(inst, def, opts) {
 		throw new Error('Contract does not have an address set and it was not provided.');
 	return new EventWatcher({
 		inst: inst,
-		address: opts.address, // Watcher will resolve address.
+		address: opts.address,
 		args: opts.args,
 		pollRate: opts.pollRate,
 		def: def
@@ -328,7 +318,7 @@ function testEventArgs(log, args={}) {
 async function createCallOpts(inst, def, args, opts) {
 	let to = undefined;
 	if (def.type != 'constructor') {
-		to = await inst._eth.resolveAddress(
+		to = await inst._eth.resolve(
 			opts.to || opts.address || inst.address);
 	}
 	const data = opts.data || await createCallData(inst, def, args, opts);
@@ -399,19 +389,17 @@ function augmentReceipt(inst, address, receipt) {
 	address = ethjs.toChecksumAddress(
 		address || receipt.contractAddress || receipt.to);
 	// Parse logs into events.
-	const groups = _.groupBy(receipt.logs, 'address');
 	const events = [];
-	for (let contract in groups) {
-		const abi = (contract == address) ?
-			inst._abi : module.exports.ABI_CACHE[contract];
-		if (!abi)
-			continue;
-		for (let log of groups[contract]) {
-			const def = findLogDef(abi, log.topics[0]);
-			if (def) {
-				const decoded = decodeLogItem(def, log);
-				if (decoded)
+	for (const log of receipt.logs) {
+		for (const signature in EVENT_CACHE) {
+			if (log.topics.length == 0) {
+				continue;
+			}
+			if (util.isSameHex(log.topics[0], signature)) {
+				const decoded = decodeLogItem(EVENT_CACHE[signature], log);
+				if (decoded) {
 					events.push(decoded);
+				}
 			}
 		}
 	}
@@ -420,15 +408,6 @@ function augmentReceipt(inst, address, receipt) {
 		findEvents: (name, args) => findEvents(name, args, events),
 		events: events
 	});
-}
-
-function findLogDef(abi, signature) {
-	for (let def of abi) {
-		if (def.type == 'event') {
-			if (coder.encodeLogSignature(def) == signature)
-				return def;
-		}
-	}
 }
 
 function decodeLogItem(def, log) {
@@ -467,15 +446,13 @@ function findEvents(name, args, events) {
 
 async function createCallData(inst, def, args, opts) {
 	const _args = await resolveCallArgs(inst, args, def);
-	const abi = inst._eth.web3.eth.abi;
 	if (def.type == 'constructor') {
 		const bytecode = opts.bytecode || inst.bytecode;
 		if (!bytecode)
 			throw new Error('Contract has no bytecode defined and it was not provided.');
-		return util.addHexPrefix(bytecode) +
-			abi.encodeParameters(def.inputs, _args).substr(2);
+		return coder.encodeConstructorCall(bytecode, def, _args);
 	}
-	return abi.encodeFunctionCall(def, _args);
+	return coder.encodeFunctionCall(def, _args);
 }
 
 async function resolveCallArgs(inst, args, def, opts={}) {
@@ -516,9 +493,9 @@ async function resolveCallArgs(inst, args, def, opts={}) {
 
 async function resolveAddresses(inst, v) {
 	if (_.isArray(v))
-		return await Promise.all(_.map(v, _v => resolveAddresses(inst, _v)));
+		return Promise.all(_.map(v, _v => resolveAddresses(inst, _v)));
 	if (_.isString(v))
-		return await inst._eth.resolveAddress(v);
+		return inst._eth.resolve(v);
 	return v;
 }
 

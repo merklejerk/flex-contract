@@ -1,6 +1,6 @@
 {
 	"name": "flex-contract",
-	"version": "1.9.3",
+	"version": "1.10.0",
 	"description": "A modern, flexible Ethereum smart contract abstraction.",
 	"main": "src/index.js",
 	"repository": {
@@ -16,17 +16,17 @@
 		"test": "mocha --timeout 8000 ./test/*.js"
 	},
 	"dependencies": {
-		"bignumber.js": "^8.0.2",
-		"ethereumjs-util": "^6.0.0",
-		"flex-ether": "^1.3.1",
-		"lodash": "^4.17.11",
-		"web3-eth-abi": "1.0.0-beta.37"
+		"bignumber.js": "^9.0.0",
+		"ethereumjs-util": "^6.2.0",
+		"flex-ether": "^1.6.0",
+		"lodash": "^4.17.15",
+		"web3-eth-abi": "^1.2.4"
 	},
 	"devDependencies": {
-		"ganache-cli": "^6.1.5",
-		"mocha": "^5.2.0",
+		"ganache-cli": "^6.7.0",
+		"mocha": "^6.2.2",
 		"mz": "^2.7.0",
-		"web3": "1.0.0-beta.37"
+		"web3": "^1.2.4"
 	},
 	"keywords": [
 		"ethereum",

@@ -27,14 +27,13 @@ function toHex(v) {
 	throw new Error(`Can't convert value to hex: ${v}`);
 }
 
-function privateKeyToAddress(key) {
-	return ethjs.toChecksumAddress(
-		'0x'+(ethjs.privateToAddress(ethjs.toBuffer(key)).toString('hex')));
+function isSameHex(a, b) {
+	return a.toLowerCase() === b.toLowerCase();
 }
 
 module.exports = {
-	stripHexPrefix: stripHexPrefix,
-	addHexPrefix: addHexPrefix,
-	toHex: toHex,
-	privateKeyToAddress: privateKeyToAddress
+	stripHexPrefix,
+	addHexPrefix,
+	toHex,
+	isSameHex,
 };

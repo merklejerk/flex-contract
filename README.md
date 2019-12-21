@@ -1,5 +1,5 @@
-![build status](https://travis-ci.org/merklejerk/flex-contract.svg?branch=master)
-![npm package](https://badge.fury.io/js/flex-contract.svg)
+[![build status](https://travis-ci.org/merklejerk/flex-contract.svg?branch=master)](https://travis-ci.org/merklejerk/flex-contract)
+[![npm package](https://badge.fury.io/js/flex-contract.svg)](https://www.npmjs.com/package/flex-contract)
 
 # flex-contract
 A modern, flexible Ethereum smart contract abstraction that:
@@ -727,8 +727,7 @@ change. Many of these can also be overridden in individual call options.
 - `gasPriceBonus (Number)` Gas price bonus for transactions, where `0.01 = +1%`. May be negative.
 - `bytecode` Bytecode of the contract, used for deployment with `new()`.
 - `web3 (Web3)` The wrapped Web3 instance used.
-- `eth (FlexEther)` The [flex-ether](https://github.com/merklejerk/flex-ether)
-(web3 wrapper) instance used.
+- `eth (FlexEther)` The [flex-ether](https://github.com/merklejerk/flex-ether) instance used.
 - `abi` (Read-only) The ABI defining the contract.
 
 ### Passing Structs
