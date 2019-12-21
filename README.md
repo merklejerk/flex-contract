@@ -105,6 +105,9 @@ contract = new FlexContract(
       network: String,
       // Your Infura project ID, if not passing a custom provider.
       infuraKey: String,
+      // Whether to use a websocket connection instead of an HTTPS connection
+      // when using Infura.
+      ws: boolean,
       // Connect to an existing provider at a URI
       // (e.g., http://localhost:8545 or https://mainnet.infura.io/v3/PROJECT_ID).
       // The 'net' option is required is using an IPC path.
