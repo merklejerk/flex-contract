@@ -2,6 +2,7 @@
 const _ = require('lodash');
 const ganache = require('ganache-cli');
 const FlexContract = require('../src/index');
+const FlexEther = require('flex-ether');
 const promisify = require('util').promisify;
 const fs = require('mz/fs');
 const assert = require('assert');
@@ -24,7 +25,7 @@ describe('flex-contract', function() {
 			balance: 100 + _.repeat('0', 18)
 		}));
 		provider = ganache.provider({
-			accounts: accounts
+			accounts: accounts,
 		});
 		// Suppress max listener warnings.
 		provider.setMaxListeners(4096);
@@ -273,7 +274,11 @@ describe('flex-contract', function() {
 	it('can send transaction with explicit key', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123);
-		await c.transact({key: accounts[0].secretKey});
+		const receipt = await c.transact({key: accounts[0].secretKey});
+		assert.equal(
+			receipt.from.toLowerCase(),
+			FlexEther.util.privateKeyToAddress(accounts[0].secretKey).toLowerCase(),
+		);
 	});
 
 	it('can get past events', async function() {

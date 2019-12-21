@@ -357,22 +357,27 @@ async function sendTx(inst, def, args, opts) {
 	return {tx: tx, address: callOpts.to, inst: inst};
 }
 
-function wrapSendTx(wrapped) {
+function wrapSendTx(sent) {
 	let receipt = null;
 	const wrapper = (async () => {
-		const {tx, address, inst} = await wrapped;
+		if (receipt) {
+			return receipt;
+		}
+		const { tx, address, inst } = await sent;
 		return receipt = augmentReceipt(inst, address, await tx);
 	})();
 	wrapper.receipt = wrapper;
 	wrapper.txId = (async () => {
-		const {tx} = await wrapped;
+		const {tx} = await sent;
 		return await tx.txId;
 	})();
 	wrapper.confirmed = async (count=1) => {
-		const {tx} = await wrapped;
-		await tx.confirmed(count);
-		assert.ok(receipt);
-		return receipt;
+		const { tx, address, inst } = await sent;
+		const r = await tx.confirmed(count);
+		if (receipt) {
+			return receipt;
+		}
+		return receipt = augmentReceipt(inst, address, r);
 	};
 	return wrapper;
 }
