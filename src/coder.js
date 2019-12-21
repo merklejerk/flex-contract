@@ -1,10 +1,9 @@
 'use strict'
 const _ = require('lodash');
-const Web3 = require('web3');
+const abiEncoder = require('web3-eth-abi');
 const assert = require('assert');
 const ethjs = require('ethereumjs-util');
-
-const _coder = (new Web3()).eth.abi;
+const util = require('./util');
 
 function encodeLogTopicsFilter(def, args=[]) {
 	const topicArgs = [];
@@ -17,23 +16,38 @@ function encodeLogTopicsFilter(def, args=[]) {
 				topicArgs.push(null);
 		}
 	}
-	return [_coder.encodeEventSignature(def), ...topicArgs];
+	return [abiEncoder.encodeEventSignature(def), ...topicArgs];
+}
+
+function encodeFunctionCall(def, args=[]) {
+	return abiEncoder.encodeFunctionCall(
+		def,
+		normalizeEncodeInput(def.inputs, args),
+	);
+}
+
+function encodeConstructorCall(bytecode, def, args=[]) {
+	return util.addHexPrefix(bytecode) +
+		util.stripHexPrefix(abiEncoder.encodeParameters(
+			def.inputs,
+			normalizeEncodeInput(def.inputs, args),
+		));
 }
 
 function decodeCallOutput(outputs, data) {
 	return normalizeDecodedOutput(
 		outputs,
-		_coder.decodeParameters(outputs, data));
+		abiEncoder.decodeParameters(outputs, data));
 }
 
 function encodeLogSignature(def) {
-	return _coder.encodeEventSignature(def);
+	return abiEncoder.encodeEventSignature(def);
 }
 
 function decodeLogItemArgs(def, log) {
 	return normalizeDecodedOutput(
 		def.inputs,
-		_coder.decodeLog(
+		abiEncoder.decodeLog(
 			def.inputs,
 			log.data,
 			log.topics.slice(1)));
@@ -41,22 +55,38 @@ function decodeLogItemArgs(def, log) {
 
 function encodeParameter(type, value) {
 	assert(!_.isNil(value));
-	return _coder.encodeParameter(type, normalizeEncodeValue(type, value));
+	return abiEncoder.encodeParameter(type, normalizeEncodeValue(type, value));
+}
+
+function normalizeEncodeInput(inputs, values) {
+	const normalized = [];
+	for (let i = 0; i < inputs.length; i++) {
+		const input = inputs[i];
+		let v = _.isArray(values) ? values[i] : values[input.name];
+		assert(!_.isNil(v));
+		if (input.type == 'tuple')
+			v = normalizeEncodeInput(input.components, v);
+		else
+			v = normalizeEncodeValue(input.type, v);
+		normalized.push(v);
+	}
+	return normalized;
 }
 
 function normalizeDecodedOutput(outputs, decoded) {
+	const normalized = {};
 	for (let i = 0; i < outputs.length; i++) {
-		const o = outputs[i];
+		const output = outputs[i];
 		let v = decoded[i];
-		if (o.type == 'tuple')
-			v = normalizeDecodedOutput(o.components, v);
+		if (output.type == 'tuple')
+			v = normalizeDecodedOutput(output.components, v);
 		else
-			v = normalizeDecodedValue(o.type, v);
-		if (o.name)
-			decoded[o.name] = v;
-		decoded[i] = v;
+			v = normalizeDecodedValue(output.type, v);
+		if (output.name)
+			normalized[output.name] = v;
+		normalized[i] = v;
 	}
-	return decoded;
+	return normalized;
 }
 
 function normalizeDecodedValue(type, value) {
@@ -104,4 +134,6 @@ module.exports = {
 	decodeLogItemArgs: decodeLogItemArgs,
 	decodeCallOutput: decodeCallOutput,
 	encodeLogTopicsFilter: encodeLogTopicsFilter,
+	encodeFunctionCall: encodeFunctionCall,
+	encodeConstructorCall: encodeConstructorCall,
 };

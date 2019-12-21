@@ -190,7 +190,7 @@ describe('flex-contract', function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123);
 		await c.transact({value: 100});
-		const bal = await c.web3.eth.getBalance(c.address);
+		const bal = await c.eth.getBalance(c.address);
 		assert.equal(bal, 100);
 	});
 
@@ -214,7 +214,7 @@ describe('flex-contract', function() {
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c.raiseEvent(...args);
 		const event = receipt.events[0];
-		assert.equal(event.address, c.address);
+		assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 		assert.equal(event.name, 'SingleEvent');
 		assert.equal(event.args.a, args[0]);
 		assert.equal(event.args.b, args[1]);
@@ -230,7 +230,7 @@ describe('flex-contract', function() {
 		const events = receipt.events.sort((a,b) => a.args.idx - b.args.idx);
 		for (let i = 0; i < events.length; i++) {
 			const event = events[i];
-			assert.equal(event.address, c.address);
+			assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 			assert.equal(event.name, 'RepeatedEvent');
 			assert.equal(event.args.idx, i);
 			assert.equal(event.args.a, args[0]);
@@ -247,7 +247,7 @@ describe('flex-contract', function() {
 		const receipt =await c.raiseEvents(count, ...args);
 		const event = receipt.findEvent('RepeatedEvent',
 			{idx: 1, a: args[0], b: args[1], c: args[2]});
-		assert.equal(event.address, c.address);
+		assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 		assert.equal(event.name, 'RepeatedEvent');
 		assert.equal(event.args.idx, 1);
 		assert.equal(event.args.a, args[0]);
@@ -263,25 +263,7 @@ describe('flex-contract', function() {
 		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
 		const receipt = await c1.callOther(c2.address, ...args);
 		const event = receipt.events[0];
-		assert.equal(event.address, c2.address);
-		assert.equal(event.name, 'SingleEvent');
-		assert.equal(event.args.a, args[0]);
-		assert.equal(event.args.b, args[1]);
-		assert.equal(event.args.c, args[2]);
-	});
-
-	it('can get receipt event with address override', async function() {
-		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
-		await c.new(123);
-		// Don't let it fall back to the cache or defined address.
-		const address = c.address;
-		assert.ok(FlexContract.ABI_CACHE[address]);
-		delete FlexContract.ABI_CACHE[address];
-		c.address = null;
-		const args = [randomAddress(), _.random(1, 1e6), randomHex(32)];
-		const receipt = await c.raiseEvent(...args, {address: address});
-		const event = receipt.events[0];
-		assert.equal(event.address, address);
+		assert.equal(event.address.toLowerCase(), c2.address.toLowerCase());
 		assert.equal(event.name, 'SingleEvent');
 		assert.equal(event.args.a, args[0]);
 		assert.equal(event.args.b, args[1]);
@@ -307,7 +289,7 @@ describe('flex-contract', function() {
 			const args = argss[i];
 			const event = r[i];
 			assert.equal(event.name, 'SingleEvent');
-			assert.equal(event.address, c.address);
+			assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 			for (let j = 0; j < args.length; j++)
 				assert.equal(event.args[j], args[j]);
 		}
@@ -334,13 +316,14 @@ describe('flex-contract', function() {
 		}));
 		for (let n = 0; n < filters.length; n++) {
 			const r = await c.SingleEvent(
-				{fromBlock: -argss.length * 2, args: filters[n]});
+				{ fromBlock: -argss.length * 2, args: filters[n] },
+			);
 			assert.equal(r.length, matches[n].length);
 			for (let i = 0; i < r.length; i++) {
 				const event = r[i];
 				const match = matches[i];
 				assert.equal(event.name, 'SingleEvent');
-				assert.equal(event.address, c.address);
+				assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 				for (let j = 0; j < event.args.length; j++)
 					assert.equal(event.args[j], match[j]);
 			}
@@ -380,7 +363,7 @@ describe('flex-contract', function() {
 				const event = r[i];
 				const match = matches[i];
 				assert.equal(event.name, 'SingleEvent');
-				assert.equal(event.address, c.address);
+				assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 				for (let j = 0; j < event.args.length; j++)
 					assert.equal(event.args[j], match[j]);
 			}
@@ -406,7 +389,7 @@ describe('flex-contract', function() {
 			const args = argss[i];
 			const event = logs[i];
 			assert.equal(event.name, 'SingleEvent');
-			assert.equal(event.address, c.address);
+			assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 			for (let j = 0; j < args.length; j++)
 				assert.equal(event.args[j], args[j]);
 		}
@@ -437,7 +420,7 @@ describe('flex-contract', function() {
 			const event = logs[i];
 			const match = choices[0];
 			assert.equal(event.name, 'SingleEvent');
-			assert.equal(event.address, c.address);
+			assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 			for (let j = 0; j < event.args.length; j++)
 				assert.equal(event.args[j], match[j]);
 		}
@@ -469,7 +452,7 @@ describe('flex-contract', function() {
 			const event = logs[i];
 			const match = choices[0];
 			assert.equal(event.name, 'SingleEvent');
-			assert.equal(event.address, c.address);
+			assert.equal(event.address.toLowerCase(), c.address.toLowerCase());
 			for (let j = 0; j < event.args.length; j++)
 				assert.equal(event.args[j], match[j]);
 		}
