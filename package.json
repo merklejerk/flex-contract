@@ -1,6 +1,6 @@
 {
 	"name": "flex-contract",
-	"version": "1.10.2",
+	"version": "2.0.0",
 	"description": "A modern, flexible Ethereum smart contract abstraction.",
 	"main": "src/index.js",
 	"repository": {

@@ -103,19 +103,23 @@ module.exports = class FlexContract {
 		return getCodeDigest(this, opts);
 	}
 
-	new(..._args) {
-		const {args, opts} = parseMethodCallArgs(_args);
+	new(...args) {
 		const def = findDef(this._abi, {type: 'constructor', args: args});
 		if (!def)
 			throw new Error(`Cannot find matching constructor for given arguments`);
-		if (opts.gasOnly)
-			return estimateGas(this, def, args, opts);
-		const r = wrapSendTx(sendTx(this, def, args, opts));
-		r.receipt.then(
-			receipt => {
-				this._address = ethjs.toChecksumAddress(receipt.contractAddress);
+		const _call = createBoundFunctionCall(this, def, args);
+		// Wrap `send()` to automatically set the contract address on deploy.
+		const _oldSend = _call.send;
+		_call.send = (...sendArgs) => {
+			const sendPromise = _oldSend.call(this, ...sendArgs);
+			sendPromise.receipt.then(receipt => {
+				this._address = ethjs.toChecksumAddress(
+					receipt.contractAddress,
+				);
 			});
-		return r;
+			return sendPromise;
+		};
+		return _call;
 	}
 };
 const EVENT_CACHE = module.exports.EVENT_CACHE = {};
@@ -130,17 +134,22 @@ class EventWatcher extends EventEmitter {
 		this._timer = null;
 		this._stop = false;
 		this.stop = this.close;
-		this._init(opts.address || inst._address, opts.args || {});
+		this._args = opts.args || {};
+		this._init(opts.address || inst._address);
 	}
 
-	async _init(address, args) {
+	async _init(address) {
 		try {
 			const eth = this._inst._eth;
-			const _args = await resolveCallArgs(this._inst, args, this._def,
-				{partial: true, indexedOnly: true});
+			const indexedArgs = await resolveCallArgs(
+				this._inst,
+				this._args,
+				this._def,
+				{ partial: true, indexedOnly: true },
+			);
 			this._filter = {
 				address,
-				topics: coder.encodeLogTopicsFilter(this._def, _args)
+				topics: coder.encodeLogTopicsFilter(this._def, indexedArgs)
 			};
 			this._lastBlock = await eth.getBlockNumber();
 			if (!this._stop)
@@ -200,26 +209,38 @@ async function getCodeDigest(inst, opts={}) {
 }
 
 function findDef(defs, filter={}) {
-	for (let def of defs) {
+	// Sort functions descending input length to match longest function call
+	// first .
+	const sortedDefs = defs.slice().sort((a, b) => {
+		return (b.inputs || []).length - (a.inputs || []).length;
+	});
+	for (let def of sortedDefs) {
 		if (filter.name && def.name != filter.name)
 			continue;
 		if (filter.type && def.type != filter.type)
 			continue;
 		if (filter.args) {
-			if (_.isArray(filter.args)) {
-				if (def.inputs.length != filter.args.length)
+			const args = filter.args;
+			if (_.isArray(args)) {
+				if (args.length == 1) {
+					if (def.inputs.length == 0)
+						continue;
+					// Handle named args.
+					if (def.inputs.length > 1) {
+						if (_.isObject(args[0])) {
+							if (!def.inputs.every(i => args[0][i.name] !== undefined))
+								continue;
+						} else if (def.inputs.length !== args.length)
+							continue;
+					}
+				} else if (def.inputs.length !== args.length)
 					continue;
-			} else if (_.isPlainObject(filter.args)) {
-				const keys = _.keys(filter.args);
-				if (def.inputs.length != keys.length)
-					continue;
-				const inputNames = _.map(def.inputs, i => i.name);
-				if (_.difference(keys, inputNames).length)
+			} else if (_.isObject(args)) {
+				if (!def.inputs.every(i => args[i.name] !== undefined))
 					continue;
 			}
-		} else {
-			if (def.inputs.length != 0)
-				continue;
+		} else if (def.inputs.length != 0) {
+			continue;
 		}
 		return def;
 	}
@@ -233,33 +254,77 @@ function initMethods(inst, abi) {
 			const _defs = defs[name] = defs[name] || [];
 			_defs.push(def);
 			const handler = inst[name] = inst[name] ||
-				function (..._args) {
-					const {args, opts} = parseMethodCallArgs(_args);
+				function (...args) {
 					const def = findDef(_defs, {args: args});
 					if (!def)
 						throw new Error(`Cannot find matching function '${name}' for given arguments`);
-					if (opts.gasOnly)
-						return estimateGas(inst, def, args, opts);
-					if (def.constant)
-						return callTx(inst, def, args, opts);
-					return wrapSendTx(sendTx(inst, def, args, opts));
+					return createBoundFunctionCall(inst, def, args);
 				};
 		}
 	}
 }
 
+function createBoundFunctionCall(inst, def, args) {
+	const parsedArgs = parseFunctionArgs(def, args);
+	return {
+		gas(opts = {}) {
+			return estimateGasBoundFunction(inst, def, parsedArgs, opts);
+		},
+		call(opts = {}) {
+			return callBoundFunction(inst, def, parsedArgs, opts);
+		},
+		send(opts = {}) {
+			return sendBoundFunction(inst, def, parsedArgs, opts);
+		},
+	};
+}
+
+function parseFunctionArgs(def, args) {
+	if (def.inputs.length > 1 && _.isPlainObject(args[0])) {
+		const argsObj = args[0];
+		if (def.inputs.length === 1) {
+			return [argsObj];
+		}
+		return def.inputs.map(input => {
+			if (!(input.name in argsObj)) {
+				throw new Error(`Function argument "${input.name}" missing from args object.`);
+			}
+			return argsObj[input.name];
+		});
+	}
+	if (args.length !== def.inputs.length) {
+		throw new Error(`Expected ${def.inputs.length} function args but instead got ${args.length}.`);
+	}
+	return args;
+}
+
 function initEvents(inst, abi) {
+	const defs = {};
 	for (let def of abi) {
 		if (def.type == 'event') {
 			const name = def.name;
-			const handler = inst[name] = function (opts) {
-				return getPastEvents(inst, def, opts);
-			};
-			handler.watch = function(opts) {
-				return watchEvents(inst, def, opts);
+			const _defs = defs[name] = defs[name] || [];
+			_defs.push(def);
+			const handler = inst[name] = inst[name] || function (...args) {
+				const def = findDef(_defs, {args: args});
+				if (!def)
+					throw new Error(`Cannot find matching function '${name}' for given arguments`);
+				return createBoundEventCall(inst, def, args);
 			};
 		}
 	}
+}
+
+function createBoundEventCall(inst, def, args) {
+	const parsedArgs = parseFunctionArgs(def, args);
+	return {
+		since(opts = {}) {
+			return getPastEvents(inst, def, parsedArgs, opts);
+		},
+		watch(opts = {}) {
+			return watchEvents(inst, def, parsedArgs, opts);
+		},
+	};
 }
 
 function populateEventCache(eventDefs) {
@@ -268,7 +333,7 @@ function populateEventCache(eventDefs) {
 	}
 }
 
-async function getPastEvents(inst, def, opts={}) {
+async function getPastEvents(inst, def, args, opts={}) {
 	opts = _.defaults({}, opts, {
 		fromBlock: -1,
 		toBlock: -1,
@@ -277,42 +342,59 @@ async function getPastEvents(inst, def, opts={}) {
 	});
 	if (!opts.address)
 		throw new Error('Contract does not have an address set and it was not provided.');
-	const args = await resolveCallArgs(inst, opts.args || {}, def,
-		{partial: true, indexedOnly: true});
+	const topicsArgs = await resolveCallArgs(
+		inst,
+		args || {},
+		def,
+		{ partial: true, indexedOnly: true },
+	);
 	const filter = {
 		fromBlock: opts.fromBlock,
 		toBlock: opts.toBlock,
 		address: opts.address,
-		topics: coder.encodeLogTopicsFilter(def, args)
+		topics: coder.encodeLogTopicsFilter(def, topicsArgs)
 	};
 	const raw = await inst._eth.getPastLogs(filter);
-	return _.filter(_.map(raw, _raw => decodeLogItem(def, _raw)),
-		log => testEventArgs(log, opts.args));
+	return _.filter(
+		_.map(
+			raw,
+			_raw => decodeLogItem(def, _raw),
+		),
+		log => testEventArgs(log, args),
+	);
 }
 
-function watchEvents(inst, def, opts) {
-	opts = _.defaults({}, opts, {
-		address: inst._address,
-		args: {},
-		pollRate: 15000
-	});
+function watchEvents(inst, def, args, opts) {
+	opts = _.defaults(
+		{},
+		opts,
+		{
+			address: inst._address,
+			args: {},
+			pollRate: 15000
+		},
+	);
 	if (!opts.address)
 		throw new Error('Contract does not have an address set and it was not provided.');
 	return new EventWatcher({
+		args,
 		inst: inst,
 		address: opts.address,
-		args: opts.args,
 		pollRate: opts.pollRate,
 		def: def
 	});
 }
 
 function testEventArgs(log, args={}) {
-	// Args can be an array and this will work because event args can be indexed
-	// by offset as well.
 	return _.every(
-		_.map(_.keys(args), name =>
-			name in log.args && log.args[name] == args[name]));
+		_.map(
+			// Args can be an array and this will work because event args can
+			// be indexed by offset as well.
+			_.keys(args),
+			name => _.isNil(args[name])
+				|| util.isSameValue(log.args[name], args[name]),
+		),
+	);
 }
 
 async function createCallOpts(inst, def, args, opts) {
@@ -334,30 +416,34 @@ async function createCallOpts(inst, def, args, opts) {
 	};
 }
 
-async function estimateGas(inst, def, args, opts) {
+async function estimateGasBoundFunction(inst, def, args, opts = {}) {
 	const callOpts = await createCallOpts(inst, def, args, opts);
+	callOpts.key = opts.key;
 	return inst._eth.estimateGas(callOpts.to, callOpts);
 }
 
-async function callTx(inst, def, args, opts) {
+async function callBoundFunction(inst, def, args, opts) {
 	const callOpts = await createCallOpts(inst, def, args, opts);
 	callOpts.block = opts.block;
+	callOpts.key = opts.key;
 	if (!callOpts.to && def.type != 'constructor')
 		throw Error('Contract has no address.');
 	const result = await inst._eth.call(callOpts.to, callOpts);
 	return decodeCallOutput(def, result);
 }
 
-async function sendTx(inst, def, args, opts) {
-	const callOpts = await createCallOpts(inst, def, args, opts);
-	callOpts.key = opts.key;
-	if (!callOpts.to && def.type != 'constructor')
-		throw Error('Contract has no address.');
-	const tx = inst._eth.send(callOpts.to, callOpts);
-	return {tx: tx, address: callOpts.to, inst: inst};
+function sendBoundFunction(inst, def, args, opts = {}) {
+	return wrapSendTxPromise((async () => {
+		const callOpts = await createCallOpts(inst, def, args, opts);
+		callOpts.key = opts.key;
+		if (!callOpts.to && def.type != 'constructor')
+			throw Error('Contract has no address.');
+		const tx = inst._eth.send(callOpts.to, callOpts);
+		return {tx: tx, address: callOpts.to, inst: inst};
+	})());
 }
 
-function wrapSendTx(sent) {
+function wrapSendTxPromise(sent) {
 	let receipt = null;
 	const wrapper = (async () => {
 		if (receipt) {
@@ -502,16 +588,4 @@ async function resolveAddresses(inst, v) {
 	if (_.isString(v))
 		return inst._eth.resolve(v);
 	return v;
-}
-
-function parseMethodCallArgs(args) {
-	if (args.length > 0) {
-		const last = _.last(args);
-		if (_.isPlainObject(last)) {
-			if (args.length > 1)
-				return {args: _.initial(args), opts: last};
-			return {args: last.args || [], opts: _.omit(last, ['args'])};
-		}
-	}
-	return {args: args, opts: {}};
 }
