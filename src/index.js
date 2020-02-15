@@ -244,6 +244,13 @@ function findDef(defs, filter={}) {
 		}
 		return def;
 	}
+	if (filter.type === 'constructor' && (!filter.args || filter.args.length === 0)) {
+		return {
+			type: 'constructor',
+			inputs: [],
+			outputs: [],
+		};
+	}
 }
 
 function initMethods(inst, abi) {
