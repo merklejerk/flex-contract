@@ -8,6 +8,8 @@ const BigNumber = require('bignumber.js');
 const EventEmitter = require('events');
 const assert = require('assert');
 
+const NULL_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 module.exports = class FlexContract {
 	constructor(abi, address, opts) {
 		// address may be omitted.
@@ -280,6 +282,9 @@ function createBoundFunctionCall(inst, def, args) {
 		call(opts = {}) {
 			return callBoundFunction(inst, def, parsedArgs, opts);
 		},
+		async encode(opts = {}) {
+			return (await createCallOpts(inst, def, parsedArgs, { to: NULL_ADDRESS, ...opts })).data;
+		},
 		send(opts = {}) {
 			return sendBoundFunction(inst, def, parsedArgs, opts);
 		},
@@ -292,7 +297,6 @@ function parseFunctionArgs(def, args) {
 		if (def.inputs.length === 1) {
 			return [argsObj];
 		}
-		console.log(def);
 		return def.inputs.map(input => {
 			if (!(input.name in argsObj)) {
 				throw new Error(`Function argument "${input.name}" missing from args object.`);

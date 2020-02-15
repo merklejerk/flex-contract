@@ -71,6 +71,7 @@ watcher.on('data', event => {
 - [Making read-only calls](#making-read-only-calls)
 - [Making transactions](#making-transactions)
 - [Deploying a new contract instance](#deploying-a-new-contract-instance)
+- [Getting encoded call data](#getting-encoded-call-data)
 - [Receipt events](#receipt-events)
 - [Past events](#past-events)
 - [Live events](#live-events)
@@ -324,6 +325,15 @@ const receipt = await contract.new(arg1, arg2).send();
 contract.address; // '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5'
 // receipt also has deployed contract address.
 receipt.address; // '0x059AFFF592bCF0CD2dDaAF83CeC2dbeEDA6f71D5'
+```
+
+### Getting encoded call data
+Calling `encode()` on a bound function call will return the encoded call data.
+
+##### Example
+```js
+// Return the encoded call data to `myContractFn()`.
+const encoded = await contract.myContractFn(...args).encode(/* opts */);
 ```
 
 ### Receipt Events

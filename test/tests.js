@@ -59,6 +59,12 @@ describe('flex-contract', function() {
 		assert.equal(_digest, digest);
 	});
 
+	it('can encode call data', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		const r = await c.constFn(2).encode();
+		assert.ok(r && r !== '0x');
+	});
+
 	it('can call constant functions', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123).send();
