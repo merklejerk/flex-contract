@@ -287,11 +287,12 @@ function createBoundFunctionCall(inst, def, args) {
 }
 
 function parseFunctionArgs(def, args) {
-	if (def.inputs.length > 1 && _.isPlainObject(args[0])) {
+	if (def.inputs.length > 1 && args.length == 1 && _.isPlainObject(args[0])) {
 		const argsObj = args[0];
 		if (def.inputs.length === 1) {
 			return [argsObj];
 		}
+		console.log(def);
 		return def.inputs.map(input => {
 			if (!(input.name in argsObj)) {
 				throw new Error(`Function argument "${input.name}" missing from args object.`);
