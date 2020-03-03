@@ -1,6 +1,6 @@
 {
 	"name": "flex-contract",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"description": "A modern, flexible Ethereum smart contract abstraction.",
 	"main": "src/index.js",
 	"repository": {
@@ -18,7 +18,7 @@
 	"dependencies": {
 		"bignumber.js": "^9.0.0",
 		"ethereumjs-util": "^6.2.0",
-		"flex-ether": "^1.6.4",
+		"flex-ether": "^1.6.6",
 		"lodash": "^4.17.15",
 		"web3-eth-abi": "^1.2.4"
 	},

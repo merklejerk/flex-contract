@@ -1114,10 +1114,10 @@ flat@^4.1.0:
   dependencies:
     is-buffer "~2.0.3"
 
-flex-ether@^1.6.3:
-  version "1.6.3"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.6.3.tgz#7d4206ddf71fb4539cf7d168b1a2e8bf94d24766"
-  integrity sha512-ZB6c4ml7JItBFDP8K8A/lgmtRQDYcZqlLfiyikoW+yhxqv0asl7IvVZ4Xl6jN+Zf7Q+EuMlJYYEkYA0gqhHAOw==
+flex-ether@^1.6.6:
+  version "1.6.6"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.6.6.tgz#83870c6be6eef9dfd526f01af7aac92e5141054f"
+  integrity sha512-FjoPO1V6HoONPTZn+CgEz7+v9EcA0Gs3cyL1oT8RlXT56yoxtP2yxknBnwcbZkmXkeZSaaA5flNAOqs+Ee9QOg==
   dependencies:
     bignumber.js "^9.0.0"
     create-web3-provider "^1.5.4"
