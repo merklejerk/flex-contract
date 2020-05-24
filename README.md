@@ -247,6 +247,9 @@ const result = await contract.myContractFn(...args).call(/* opts */);
   gas: number,
   // Override the generated (hex) call data to be sent.
   data: string,
+  // geth `eth_call` state overrides object.
+  // See https://geth.ethereum.org/docs/rpc/ns-eth
+  overrides: object,
 }
 ```
 

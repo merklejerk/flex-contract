@@ -424,7 +424,8 @@ async function createCallOpts(inst, def, args, opts) {
 		value: opts.value,
 		data: data,
 		to: to,
-		from: opts.from
+		from: opts.from,
+		overrides: opts.overrides,
 	};
 }
 
