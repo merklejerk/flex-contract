@@ -482,11 +482,23 @@ function wrapSendTxPromise(sent) {
 }
 
 function decodeCallOutput(def, encoded) {
-	const decoded = coder.decodeCallOutput(def.outputs, encoded);
-	// Return a single value if only one type.
-	if (def.outputs.length == 1)
-		return decoded[0];
-	return decoded;
+	let revertError;
+	try {
+		if (!encoded.startsWith('0x08c379a0')) {
+			throw new Error();
+		}
+		revertError = coder.decodeCallOutput(
+			[{ name: 'reason', type: 'string' }],
+			'0x' + encoded.slice(10),
+		)[0];
+	} catch (err) {
+		const decoded = coder.decodeCallOutput(def.outputs, encoded);
+		// Return a single value if only one type.
+		if (def.outputs.length == 1)
+			return decoded[0];
+		return decoded;
+	}
+	throw new Error(`Contract call reverted with message: ${revertError}`);
 }
 
 function augmentReceipt(inst, address, receipt) {
