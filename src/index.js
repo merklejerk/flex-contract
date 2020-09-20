@@ -404,9 +404,18 @@ function testEventArgs(log, args={}) {
 			// be indexed by offset as well.
 			_.keys(args),
 			name => _.isNil(args[name])
+				|| isSameAddress(log.args[name], args[name])
 				|| util.isSameValue(log.args[name], args[name]),
 		),
 	);
+}
+
+const ADDRESS_REGEX = /^0x[a-f0-9]{40}$/;
+function isSameAddress(a, b) {
+	if (ADDRESS_REGEX.test(a) && ADDRESS_REGEX.test(b)) {
+		return a.toLowerCase() === b.toLowerCase();
+	}
+	return false;
 }
 
 async function createCallOpts(inst, def, args, opts) {
