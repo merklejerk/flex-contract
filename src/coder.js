@@ -63,7 +63,9 @@ function normalizeEncodeInput(inputs, values) {
 	for (let i = 0; i < inputs.length; i++) {
 		const input = inputs[i];
 		let v = _.isArray(values) ? values[i] : values[input.name];
-		assert(!_.isNil(v));
+		if (_.isNil(v)) {
+			throw new Error(`Received nil value for input "${input.name}"`);
+		}
 		if (input.type == 'tuple')
 			v = normalizeEncodeInput(input.components, v);
 		else

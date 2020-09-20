@@ -208,6 +208,16 @@ describe('flex-contract', function() {
 		await clone.new(123).send();
 	});
 
+	it('throws if call argument is nil', async function() {
+		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
+		await c.new(123).send();
+		const tx = c.raiseEvent(null, _.random(1, 1e6), randomHex(32)).send();
+		await assert.rejects(tx, err => {
+			assert.equal(err.message, `expected type string for argument "a"`);
+			return true;
+		});
+	});
+
 	it('can get a single receipt event', async function() {
 		const c = new FlexContract(ABI, {provider: provider, bytecode: BYTECODE});
 		await c.new(123).send();

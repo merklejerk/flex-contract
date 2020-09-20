@@ -492,6 +492,9 @@ function decodeCallOutput(def, encoded) {
 			'0x' + encoded.slice(10),
 		)[0];
 	} catch (err) {
+		if (!def.outputs || def.outputs.length === 0) {
+			return undefined;
+		}
 		const decoded = coder.decodeCallOutput(def.outputs, encoded);
 		// Return a single value if only one type.
 		if (def.outputs.length == 1)
@@ -582,7 +585,7 @@ async function resolveCallArgs(inst, args, def, opts={}) {
 			if (opts.indexedOnly && !input.indexed)
 				continue;
 			if (/^address/.test(input.type))
-				r.push(await resolveAddresses(inst, args[i]));
+				r.push(await resolveAddresses(inst, args[i], input.name, opts.partial));
 			else
 				r.push(args[i]);
 		}
@@ -594,7 +597,7 @@ async function resolveCallArgs(inst, args, def, opts={}) {
 			const name = input.name;
 			if (name in args) {
 				if (/^address/.test(input.type))
-					r.push(await resolveAddresses(inst, args[name]));
+					r.push(await resolveAddresses(inst, args[name], input.name, opts.partial));
 				else
 					r.push(args[name]);
 			}
@@ -607,10 +610,18 @@ async function resolveCallArgs(inst, args, def, opts={}) {
 	return r;
 }
 
-async function resolveAddresses(inst, v) {
-	if (_.isArray(v))
+async function resolveAddresses(inst, v, name, allowNil) {
+	if (_.isArray(v)) {
 		return Promise.all(_.map(v, _v => resolveAddresses(inst, _v)));
-	if (_.isString(v))
-		return inst._eth.resolve(v);
-	return v;
+	} else if (_.isString(v)) {
+		try {
+			return inst._eth.resolve(v);
+		} catch (err) {
+			throw new Error(`Could not resolve "${v}" (${name}) as an ENS name`, err);
+		}
+	}
+	if (allowNil && _.isNil(v)) {
+		return v;
+	}
+	throw new Error(`expected type string for argument "${name}"`);
 }
