@@ -247,11 +247,13 @@ function findDef(defs, filter={}) {
 		return def;
 	}
 	if (filter.type === 'constructor' && (!filter.args || filter.args.length === 0)) {
-		return {
-			type: 'constructor',
-			inputs: [],
-			outputs: [],
-		};
+		if (defs.filter(d => d.type === 'constructor').length === 0) {
+			return {
+				type: 'constructor',
+				inputs: [],
+				outputs: [],
+			};
+		}
 	}
 }
 
