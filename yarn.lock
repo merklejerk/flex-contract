@@ -2933,10 +2933,10 @@ flat@^4.1.0:
   dependencies:
     is-buffer "~2.0.3"
 
-flex-ether@^1.7.2:
-  version "1.7.2"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.7.2.tgz#0ac825d2cb947bcbb9ddbaa533cc46086fd48149"
-  integrity sha512-vdLZlID9V8Yh0P2SCfGsBiciazUAlaFStE3j7e/kxHt2SStdh0RYpD9ldcN7Jo9sUHxwNvzomUlmejn7lmXkbw==
+flex-ether@^1.8.1:
+  version "1.8.1"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.8.1.tgz#c46a9489e93eb9fcba6142d532e01e34e2b0fa94"
+  integrity sha512-r7SbviHaR10JO2bC1oZGJODgKZTjl3xf9gMxpHdWOfjOWUr3BVEO2cIQeKErRxc9ZGR/Ocas/w6fFpDatsSCdA==
   dependencies:
     bignumber.js "^9.0.0"
     create-web3-provider "^1.6.1"
