@@ -287,6 +287,9 @@ function createBoundFunctionCall(inst, def, args) {
 		async encode(opts = {}) {
 			return (await createCallOpts(inst, def, parsedArgs, { to: NULL_ADDRESS, ...opts })).data;
 		},
+		decodeCallResult(resultData) {
+			return decodeCallOutput(def, resultData);
+		},
 		send(opts = {}) {
 			return sendBoundFunction(inst, def, parsedArgs, opts);
 		},
