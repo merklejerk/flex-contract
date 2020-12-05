@@ -253,6 +253,15 @@ const result = await contract.myContractFn(...args).call(/* opts */);
 }
 ```
 
+#### Working with raw (encoded) results
+For some advanced applications you may find yourself handling ABI-encoded, hex result data. Bound functions also have a `decodeCallResult()` method which can decode these results into more conventional values. For this use, the parameters passed into the bound function do not matter. You can either re-use an existing instance of the bound function or create a new one with dummy values.
+
+```js
+const MY_CONSTANT_FN_HEX_RESULT = '0x...';
+// Just use dummy values to create a bound function that matches its function signature: myConstantFn(uint256,string).
+const reuslt = contract.myConstantFn(1337, 'foo').decodeCallResult(MY_CONSTANT_FN_HEX_RESULT);
+```
+
 ### Making transactions
 To actually modify the blockchain, you can execute a contract function call as a transaction by calling `send()` on a bound function object. This resolves to a [receipt](https://web3js.readthedocs.io/en/1.0/web3-eth.html#eth-gettransactionreceipt-return) object once the transaction is successfully mined.
 

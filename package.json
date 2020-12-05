@@ -18,7 +18,7 @@
 	"dependencies": {
 		"bignumber.js": "^9.0.0",
 		"ethereumjs-util": "^6.2.0",
-		"flex-ether": "^1.8.1",
+		"flex-ether": "^1.8.2",
 		"lodash": "^4.17.15",
 		"web3-eth-abi": "^1.2.4"
 	},
