@@ -80,7 +80,21 @@ function normalizeDecodedOutput(outputs, decoded) {
 	for (let i = 0; i < outputs.length; i++) {
 		const output = outputs[i];
 		let v = decoded[i];
-		if (output.type == 'tuple')
+		if (/\[\d*]$/.test(output.type)) {
+			const elementType = /(.+)\[\d*]$/.exec(output.type)[1];
+			const vRaw = v;
+			v = [];
+			for (const _v of vRaw) {
+				v.push(normalizeDecodedOutput(
+					[{
+						...output,
+						type: elementType,
+						name: undefined,
+					}],
+					[_v],
+				)[0]);
+			}
+		} else if (output.type == 'tuple')
 			v = normalizeDecodedOutput(output.components, v);
 		else
 			v = normalizeDecodedValue(output.type, v);

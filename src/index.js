@@ -357,8 +357,6 @@ async function getPastEvents(inst, def, args, opts={}) {
 		address: inst._address,
 		args: {}
 	});
-	if (!opts.address)
-		throw new Error('Contract does not have an address set and it was not provided.');
 	const topicsArgs = await resolveCallArgs(
 		inst,
 		args || {},
@@ -391,8 +389,6 @@ function watchEvents(inst, def, args, opts) {
 			pollRate: 15000
 		},
 	);
-	if (!opts.address)
-		throw new Error('Contract does not have an address set and it was not provided.');
 	return new EventWatcher({
 		args,
 		inst: inst,
