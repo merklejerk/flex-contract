@@ -2528,10 +2528,10 @@ flat@^4.1.0:
   dependencies:
     is-buffer "~2.0.3"
 
-flex-ether@^1.10.0:
-  version "1.10.0"
-  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.10.0.tgz#4099ea7cd1f25c43673932b257fb59fad895a6c4"
-  integrity sha512-d1R2C4Cja0VYL7cPA4BkJ3ffFQhbzI9qThMr8RIBkXn1JABlqMf6Zb2zkOHc2t/+CkM+f/72GQuSSsy3Ctw+NQ==
+flex-ether@^1.10.1:
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/flex-ether/-/flex-ether-1.10.1.tgz#3d19fe226f61ce9c4548b78eff93d7ea6a3b379a"
+  integrity sha512-wSdoYzDrTh64HrXWuE4eA0MxIAuMPMVeZDaVngsqaM5c6HXOiH4Qh2fTygEnXpjKjRy+ubg340r3U96UntlxpQ==
   dependencies:
     "@ethereumjs/common" "^2.4.0"
     "@ethereumjs/tx" "^3.3.0"
