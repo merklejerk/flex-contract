@@ -427,6 +427,7 @@ async function createCallOpts(inst, def, args, opts) {
 	}
 	const data = opts.data || await createCallData(inst, def, args, opts);
 	return {
+		fork: opts.fork,
 		gasPrice: opts.gasPrice,
 		maxFeePerGas: opts.maxFeePerGas,
 		maxPriorityFeePerGas: opts.maxPriorityFeePerGas,
