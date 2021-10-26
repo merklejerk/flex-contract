@@ -431,7 +431,7 @@ async function createCallOpts(inst, def, args, opts) {
 		gasPrice: opts.gasPrice,
 		maxFeePerGas: opts.maxFeePerGas,
 		maxPriorityFeePerGas: opts.maxPriorityFeePerGas,
-		gasLimit: opts.gasLimit | opts.gas,
+		gasLimit: opts.gasLimit || opts.gas,
 		gasPriceBonus: opts.gasPriceBonus,
 		gasBonus: opts.gasBonus,
 		value: opts.value,
